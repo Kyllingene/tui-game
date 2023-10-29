@@ -22,43 +22,53 @@ impl Map {
 
         let mut x = 0;
         let mut y = 0;
-        for ch in map.chars() {
+        for ch in map.trim().chars() {
             match ch {
                 '~' => out.tiles[y][x] = Tile { kind: TileKind::Water },
                 '"' => out.tiles[y][x] = Tile { kind: TileKind::Grass },
-                '!' => out.tiles[y][x] = Tile { kind: TileKind::Forest },
+                '$' => out.tiles[y][x] = Tile { kind: TileKind::Forest },
                 'n' => out.tiles[y][x] = Tile { kind: TileKind::Hill },
                 'A' => out.tiles[y][x] = Tile { kind: TileKind::Mountain },
                 '\n' => {
-                    x = 0;
-                    y += 1;
-
                     if y >= HEIGHT { break; }
+                    y += 1;
+                    x = 0;
+
                     continue;
                 }
-                _ => continue,
+                ' ' | '\t' => continue,
+                _ => panic!("invalid tile: `{ch}`"),
             }
 
-            x += 1;
             if x >= WIDTH {
-                x = 0;
-                y += 1;
-
                 if y >= HEIGHT { break; }
+                y += 1;
+                x = 0;
             }
+            x += 1;
         }
 
         out
     }
 
-    pub fn print(&self) {
+    pub fn print(&self, mut x: u32, mut y: u32) {
+        let ox = x;
+        let mut dark = false;
         for row in self.tiles {
             for tile in row {
-                print!("{tile}{tile}");
+                cod::color::bg(if dark { 236 } else { 238 });
+                dark = !dark;
+                tile.print(x, y);
+                cod::color::de_bg();
+                x += 2;
             }
 
-            println!();
+            if WIDTH % 2 == 0 { dark = !dark };
+            x = ox;
+            y += 1;
         }
+
+        println!();
     }
 }
 
@@ -68,7 +78,7 @@ pub enum TileKind {
     #[default]
     Water = b'~',
     Grass = b'"',
-    Forest = b'!',
+    Forest = b'$',
     Hill = b'n',
     Mountain = b'A',
 }
@@ -83,12 +93,12 @@ impl TileKind {
             Self::Mountain => 7,
         });
 
-        cod::style::de();
-        match self {
-            Self::Water
-                | Self::Grass => cod::style::italic(),
-            _ => cod::style::bold(),
-        }
+        // cod::style::de();
+        // match self {
+        //     Self::Water
+        //         | Self::Grass => cod::style::italic(),
+        //     _ => cod::style::bold(),
+        // }
     }
 }
 
@@ -97,10 +107,10 @@ pub struct Tile {
     kind: TileKind,
 }
 
-impl Display for Tile {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+impl Tile {
+    fn print(&self, x: u32, y: u32) {
         self.kind.color();
-        write!(f, "{}", self.kind as u8 as char)
+        cod::blit(format!("{0}{0}", self.kind as u8 as char), x, y);
     }
 }
 
