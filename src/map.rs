@@ -1,6 +1,5 @@
-use std::fmt::Display;
-
 use crate::player::Player;
+use crate::Direction;
 
 pub const WIDTH: usize = 8;
 pub const HEIGHT: usize = 8;
@@ -17,20 +16,43 @@ impl Map {
         Self::default()
     }
 
-    pub fn parse(map: &str) -> Self {
+    pub fn parse(map: &str, x: u32, y: u32) -> Self {
         let mut out = Self::new();
+        out.player = Player { x, y };
 
         let mut x = 0;
         let mut y = 0;
         for ch in map.trim().chars() {
             match ch {
-                '~' => out.tiles[y][x] = Tile { kind: TileKind::Water },
-                '"' => out.tiles[y][x] = Tile { kind: TileKind::Grass },
-                '$' => out.tiles[y][x] = Tile { kind: TileKind::Forest },
-                'n' => out.tiles[y][x] = Tile { kind: TileKind::Hill },
-                'A' => out.tiles[y][x] = Tile { kind: TileKind::Mountain },
+                '~' => {
+                    out.tiles[y][x] = Tile {
+                        kind: TileKind::Water,
+                    }
+                }
+                '"' => {
+                    out.tiles[y][x] = Tile {
+                        kind: TileKind::Grass,
+                    }
+                }
+                '$' => {
+                    out.tiles[y][x] = Tile {
+                        kind: TileKind::Forest,
+                    }
+                }
+                'n' => {
+                    out.tiles[y][x] = Tile {
+                        kind: TileKind::Hill,
+                    }
+                }
+                'A' => {
+                    out.tiles[y][x] = Tile {
+                        kind: TileKind::Mountain,
+                    }
+                }
                 '\n' => {
-                    if y >= HEIGHT { break; }
+                    if y >= HEIGHT {
+                        break;
+                    }
                     y += 1;
                     x = 0;
 
@@ -41,7 +63,9 @@ impl Map {
             }
 
             if x >= WIDTH {
-                if y >= HEIGHT { break; }
+                if y >= HEIGHT {
+                    break;
+                }
                 y += 1;
                 x = 0;
             }
@@ -53,6 +77,8 @@ impl Map {
 
     pub fn print(&self, mut x: u32, mut y: u32) {
         let ox = x;
+        let oy = y;
+
         let mut dark = false;
         for row in self.tiles {
             for tile in row {
@@ -63,12 +89,33 @@ impl Map {
                 x += 2;
             }
 
-            if WIDTH % 2 == 0 { dark = !dark };
+            if WIDTH % 2 == 0 {
+                dark = !dark
+            };
             x = ox;
             y += 1;
         }
-
         println!();
+
+        cod::color::fg(140);
+        cod::pixel('&', self.player.x * 2 + ox, self.player.y + oy);
+        cod::color::de();
+    }
+
+    pub fn go(&mut self, direction: Direction) -> bool {
+        let (diff_x, diff_y) = direction.diff();
+
+        let x = self.player.x.saturating_add_signed(diff_x);
+        let y = self.player.y.saturating_add_signed(diff_y);
+
+        match self.tiles[y as usize][x as usize].kind {
+            TileKind::Water | TileKind::Mountain => false,
+            _ => {
+                self.player.x = x;
+                self.player.y = y;
+                true
+            }
+        }
     }
 }
 
@@ -84,33 +131,29 @@ pub enum TileKind {
 }
 
 impl TileKind {
-    pub fn color(&self) {
-        cod::color::fg(match self {
+    pub fn color(&self) -> u8 {
+        match self {
             Self::Water => 6,
-            Self::Grass => 10,
+            Self::Grass => 11,
             Self::Forest => 2,
             Self::Hill => 70,
             Self::Mountain => 7,
-        });
-
-        // cod::style::de();
-        // match self {
-        //     Self::Water
-        //         | Self::Grass => cod::style::italic(),
-        //     _ => cod::style::bold(),
-        // }
+        }
     }
 }
 
 #[derive(Debug, Default, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct Tile {
-    kind: TileKind,
+    pub kind: TileKind,
 }
 
 impl Tile {
+    fn color(&self) -> u8 {
+        self.kind.color()
+    }
+
     fn print(&self, x: u32, y: u32) {
-        self.kind.color();
+        cod::color::fg(self.kind.color());
         cod::blit(format!("{0}{0}", self.kind as u8 as char), x, y);
     }
 }
-

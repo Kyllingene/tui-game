@@ -1,5 +1,5 @@
 #[derive(Debug, Default, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct Player {
-    x: u8,
-    y: u8,
+    pub x: u32,
+    pub y: u32,
 }
