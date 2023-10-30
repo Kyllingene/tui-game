@@ -1,14 +1,16 @@
-use crate::player::Player;
+use crate::player::{constants::*, Player};
+use crate::input::{self, TurnResult};
 use crate::Direction;
 
-pub const WIDTH: usize = 8;
-pub const HEIGHT: usize = 8;
+pub const WIDTH: usize = 16;
+pub const HEIGHT: usize = 16;
 
 #[derive(Debug, Default, Clone, Copy)]
 pub struct Map {
     tiles: [[Tile; WIDTH]; HEIGHT],
 
-    player: Player,
+    pub player: Player,
+    pub turn: u32,
 }
 
 impl Map {
@@ -16,9 +18,49 @@ impl Map {
         Self::default()
     }
 
+    pub fn update(&mut self) -> TurnResult {
+        let mut res = input::handle(self)?;
+        while res != TurnResult::Ok {
+            crate::draw_key(self);
+            cod::goto::bot();
+            cod::color::de();
+            cod::color::fg(1);
+            cod::goto::up(1);
+            cod::clear::line();
+            match res {
+                TurnResult::NoKey => println!("Please press a key"),
+                TurnResult::InvalidMove(_) => println!("You can't move there"),
+                TurnResult::WaterMove => println!("You drank your fill"),
+                TurnResult::InvalidKey(_) => println!("That's not a valid key"),
+                _ => {}
+            }
+
+            cod::flush();
+            res = input::handle(self)?;
+        }
+
+        self.turn += 1;
+
+        if self.turn % HUNGER_INTERVAL == 0 {
+            self.player.hunger += 1;
+        }
+
+        if self.turn % THIRST_INTERVAL == 0 {
+            self.player.thirst += 1;
+        }
+
+        if self.player.thirst > THIRST_CAP {
+            return TurnResult::ThirstDeath;
+        } else if self.player.hunger > HUNGER_CAP {
+            return TurnResult::HungerDeath;
+        }
+
+        TurnResult::Ok
+    }
+
     pub fn parse(map: &str, x: u32, y: u32) -> Self {
         let mut out = Self::new();
-        out.player = Player { x, y };
+        out.player = Player { x, y, hunger: 0, thirst: 0 };
 
         let mut x = 0;
         let mut y = 0;
@@ -50,11 +92,13 @@ impl Map {
                     }
                 }
                 '\n' => {
-                    if y >= HEIGHT {
-                        break;
+                    if x != 0 {
+                        y += 1;
+                        if y >= HEIGHT {
+                            break;
+                        }
+                        x = 0;
                     }
-                    y += 1;
-                    x = 0;
 
                     continue;
                 }
@@ -62,14 +106,14 @@ impl Map {
                 _ => panic!("invalid tile: `{ch}`"),
             }
 
+            x += 1;
             if x >= WIDTH {
+                y += 1;
                 if y >= HEIGHT {
                     break;
                 }
-                y += 1;
                 x = 0;
             }
-            x += 1;
         }
 
         out
@@ -102,18 +146,23 @@ impl Map {
         cod::color::de();
     }
 
-    pub fn go(&mut self, direction: Direction) -> bool {
+    pub fn go(&mut self, direction: Direction) -> TurnResult {
         let (diff_x, diff_y) = direction.diff();
 
         let x = self.player.x.saturating_add_signed(diff_x);
         let y = self.player.y.saturating_add_signed(diff_y);
 
         match self.tiles[y as usize][x as usize].kind {
-            TileKind::Water | TileKind::Mountain => false,
+            TileKind::Mountain => TurnResult::InvalidMove(direction),
+            TileKind::Water => {
+                self.player.thirst = 0;
+                TurnResult::WaterMove
+            }
+
             _ => {
                 self.player.x = x;
                 self.player.y = y;
-                true
+                TurnResult::Ok
             }
         }
     }

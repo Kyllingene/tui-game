@@ -4,9 +4,9 @@ version = 3
 
 [[package]]
 name = "cod"
-version = "6.1.0"
+version = "6.1.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5119272f09dece4e4a9a3c31fa08e2a4bae80947ef4b87539a9c9a45b04009af"
+checksum = "efc5f2ab4fd980dfec1ef3ea312a55a6850fc525a4da0709dbe0b4e4433332cc"
 dependencies = [
  "console",
 ]
