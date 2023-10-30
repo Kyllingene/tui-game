@@ -1,9 +1,13 @@
+use std::fmt::Display;
+
 use crate::player::{constants::*, Player};
 use crate::input::{self, TurnResult};
 use crate::entity::{Entity, EntityKind};
 use crate::Direction;
 
-pub const WIDTH: usize = 16;
+use rand::{Rng, thread_rng};
+
+pub const WIDTH: usize = 24;
 pub const HEIGHT: usize = 16;
 
 #[derive(Debug, Default, Clone)]
@@ -21,21 +25,33 @@ impl Map {
         Self::default()
     }
 
-    pub fn draw_result(&self, res: TurnResult) {
-        crate::draw_key(self);
+    pub fn max_entities(&self) -> u32 {
+        4 + self.turn / 3
+    }
+
+    pub fn spawn_chance_coeff(&self) -> f32 {
+        1.0 + self.turn as f32 / 4.0
+    }
+
+    pub fn draw_message(&self, msg: impl Display) {
         cod::goto::bot();
         cod::color::de();
         cod::color::fg(1);
         cod::goto::up(1);
         cod::clear::line();
+        println!("{msg}");
+    }
+
+    pub fn draw_result(&self, res: TurnResult) {
+        crate::draw_key(self);
         match res {
-            TurnResult::NoKey => println!("Please press a key"),
-            TurnResult::InvalidMove(_) => println!("You can't move there"),
-            TurnResult::WaterMove => println!("You drank your fill"),
-            TurnResult::InvalidKey(_) => println!("That's not a valid key"),
-            TurnResult::Fight(dmg, hp) => println!("You dealt {}, they dealt {dmg} and are at {hp}", self.player.damage),
-            TurnResult::WonFight => println!("You killed the enemy!"),
-            TurnResult::Ate(food) => println!("You regained {food} food"),
+            TurnResult::NoKey => self.draw_message("Please press a key"),
+            TurnResult::InvalidMove(_) => self.draw_message("You can't move there"),
+            TurnResult::WaterMove => self.draw_message("You drank your fill"),
+            TurnResult::InvalidKey(_) => self.draw_message("That's not a valid key"),
+            TurnResult::Fight(dmg, hp) => self.draw_message(format!("You dealt {}, they dealt {dmg} and are at {hp}", self.player.damage)),
+            TurnResult::WonFight(upgrade) => if upgrade { self.draw_message("You won and got an upgrade!") } else { self.draw_message("You killed the enemy!") },
+            TurnResult::Ate(food) => self.draw_message(format!("You regained {food} food")),
             _ => {}
         }
     }
@@ -86,6 +102,10 @@ impl Map {
 
         for i in kill {
             entities.remove(i);
+        }
+
+        if let Some(e) = Entity::spawn_random(self) {
+            entities.push(e);
         }
 
         self.entities = entities;
@@ -163,10 +183,20 @@ impl Map {
             if !entity.alive {
                 kill = Some(*i);
             }
+
+            if let Some(i) = kill {
+                self.entities.remove(i);
+            }
+        } else {
+            self.player.health = (self.player.health + self.turn % 2).min(10);
         }
 
-        if let Some(i) = kill {
-            self.entities.remove(i);
+        if matches!(res, TurnResult::WonFight(_)) {
+            let mut rng = thread_rng();
+            if rng.gen::<f32>() <= UPGRADE_CHANCE {
+                self.player.damage += 1;
+                res = TurnResult::WonFight(true);
+            }
         }
 
         res
@@ -239,8 +269,8 @@ impl Map {
                     }
                 }
 
-                for i in kill {
-                    self.entities.remove(i);
+                for (i, e) in kill.iter().enumerate() {
+                    self.entities.remove(e - i);
                 }
 
                 res

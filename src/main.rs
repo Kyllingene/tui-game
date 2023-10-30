@@ -9,7 +9,7 @@ use rand::Rng;
 use rand::distributions::{Distribution, Standard, Uniform};
 
 use input::TurnResult;
-use map::{TileKind, WIDTH};
+use map::{TileKind, HEIGHT};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum Direction {
@@ -45,22 +45,22 @@ impl Distribution<Direction> for Standard {
 fn main() {
     let mut map = map::Map::parse(
         r#"
-            ~~~~~~~~~~~~~~~~
-            ~~""""""""~~~~~~
-            ~""""$$"$"""""~~
-            ~""$$$$$n$$$"""~
-            ~~~~~$$$$$n$$"~~
-            ~~~~~~~$$$$$$""~
-            ~""~~~~"$$$$$""~
-            ~"$"""""~~~""""~
-            ~"$"""""~~~~~~~~
-            ~""nA$"""""""""~
-            ~""""nnnnA"""""~
-            ~~""""$$nn$""n"~
-            ~~~"""""""""""~~
-            ~~~""""""""""~~~
-            ~~~~~""""""""~~~
-            ~~~~~~~~~~~~~~~~
+            ~~~~~~~~~~~~~~~~~~~~~~~~
+            ~~""""""""~~~~~~~$nn$~~~
+            ~""""$$"$"""""~~$$$nn$~~
+            ~""$$$$$n$$$"""~$$$An$~~
+            ~~~~~$$$$$n$$"~~$$nn$"~~
+            ~~~~~~~$$$$$$""~~nA$$"~~
+            ~""~~~~"$$$$$""~~nn$$"~~
+            ~"$"""""~~~""""~~$n$"~~~
+            ~"$"""""~~~~~~~~$nn$$"~~
+            ~""nA$"""""""""~$nA$$"~~
+            ~""""nnnnA"""""~nn$$$$~~
+            ~~""""$$nn$""n""n$$$n$~~
+            ~~~"""""""""""""$$$n$$~~
+            ~~~""""""""""~~~~~~$$ ~~
+            ~~~~~""""""""~~~~~~~~~~~
+            ~~~~~~~~~~~~~~~~~~~~~~~~
         "#,
         12,
         14,
@@ -90,6 +90,7 @@ fn main() {
                 TurnResult::Quit => println!("Goodbye, wimp"),
                 TurnResult::HungerDeath => println!("You died by hunger"),
                 TurnResult::ThirstDeath => println!("You died by thirst"),
+                TurnResult::ViolentDeath => println!("You died in battle"),
                 _ => panic!("Unhandled bad outcome: {res:#?}"),
             }
             cod::flush();
@@ -100,7 +101,7 @@ fn main() {
 }
 
 fn draw_key(map: &map::Map) {
-        cod::goto::pos(0, WIDTH as u32 + 1);
+        cod::goto::pos(0, HEIGHT as u32 + 1);
         cod::color::de_bg();
         for kind in [
             TileKind::Water,
@@ -124,6 +125,9 @@ fn draw_key(map: &map::Map) {
 
         cod::color::fg(1);
         print!("Health: {:2}  ", map.player.health);
+
+        cod::color::fg(7);
+        print!("Damage: {:2}  ", map.player.damage);
 
         cod::color::fg(223);
         print!("Hunger: {:2}  ", player::constants::HUNGER_CAP - map.player.hunger);
