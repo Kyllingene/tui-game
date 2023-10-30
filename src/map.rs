@@ -1,16 +1,19 @@
 use crate::player::{constants::*, Player};
 use crate::input::{self, TurnResult};
+use crate::entity::{Entity, EntityKind};
 use crate::Direction;
 
 pub const WIDTH: usize = 16;
 pub const HEIGHT: usize = 16;
 
-#[derive(Debug, Default, Clone, Copy)]
+#[derive(Debug, Default, Clone)]
 pub struct Map {
     tiles: [[Tile; WIDTH]; HEIGHT],
 
     pub player: Player,
     pub turn: u32,
+
+    pub entities: Vec<Entity>,
 }
 
 impl Map {
@@ -18,24 +21,37 @@ impl Map {
         Self::default()
     }
 
+    pub fn draw_result(&self, res: TurnResult) {
+        crate::draw_key(self);
+        cod::goto::bot();
+        cod::color::de();
+        cod::color::fg(1);
+        cod::goto::up(1);
+        cod::clear::line();
+        match res {
+            TurnResult::NoKey => println!("Please press a key"),
+            TurnResult::InvalidMove(_) => println!("You can't move there"),
+            TurnResult::WaterMove => println!("You drank your fill"),
+            TurnResult::InvalidKey(_) => println!("That's not a valid key"),
+            TurnResult::Fight(dmg, hp) => println!("You dealt {}, they dealt {dmg} and are at {hp}", self.player.damage),
+            TurnResult::WonFight => println!("You killed the enemy!"),
+            TurnResult::Ate(food) => println!("You regained {food} food"),
+            _ => {}
+        }
+    }
+
+    pub fn get_tile(&self, x: u32, y: u32) -> Option<Tile> {
+        self.tiles.get(y as usize)
+            .and_then(|row| row.get(x as usize))
+            .copied()
+    }
+
     pub fn update(&mut self) -> TurnResult {
         let mut res = input::handle(self)?;
         while res != TurnResult::Ok {
+            self.draw(0, 0);
             crate::draw_key(self);
-            cod::goto::bot();
-            cod::color::de();
-            cod::color::fg(1);
-            cod::goto::up(1);
-            cod::clear::line();
-            match res {
-                TurnResult::NoKey => println!("Please press a key"),
-                TurnResult::InvalidMove(_) => println!("You can't move there"),
-                TurnResult::WaterMove => println!("You drank your fill"),
-                TurnResult::InvalidKey(_) => println!("That's not a valid key"),
-                _ => {}
-            }
-
-            cod::flush();
+            self.draw_result(res);
             res = input::handle(self)?;
         }
 
@@ -55,12 +71,31 @@ impl Map {
             return TurnResult::HungerDeath;
         }
 
+        let mut kill = Vec::new();
+        let mut entities = self.entities.clone();
+        for (i, entity) in entities.iter_mut().enumerate() {
+            res = entity.ai(self)?;
+            self.draw(0, 0);
+            crate::draw_key(self);
+            self.draw_result(res);
+
+            if !entity.alive {
+                kill.push(i);
+            }
+        }
+
+        for i in kill {
+            entities.remove(i);
+        }
+
+        self.entities = entities;
+
         TurnResult::Ok
     }
 
     pub fn parse(map: &str, x: u32, y: u32) -> Self {
         let mut out = Self::new();
-        out.player = Player { x, y, hunger: 0, thirst: 0 };
+        out.player = Player { x, y, hunger: 0, thirst: 0, health: 10, damage: 1 };
 
         let mut x = 0;
         let mut y = 0;
@@ -119,7 +154,25 @@ impl Map {
         out
     }
 
-    pub fn print(&self, mut x: u32, mut y: u32) {
+    pub fn interact(&mut self) -> TurnResult {
+        let mut kill = None;
+        let mut res = TurnResult::Ok;
+        if let Some((i, entity)) = &mut self.entities.iter_mut().enumerate().find(|(_, e)| e.x == self.player.x && e.y == self.player.y) {
+            res = entity.interact(&mut self.player)?;
+
+            if !entity.alive {
+                kill = Some(*i);
+            }
+        }
+
+        if let Some(i) = kill {
+            self.entities.remove(i);
+        }
+
+        res
+    }
+
+    pub fn draw(&self, mut x: u32, mut y: u32) {
         let ox = x;
         let oy = y;
 
@@ -141,9 +194,19 @@ impl Map {
         }
         println!();
 
+        for entity in &self.entities {
+            entity.draw(ox, oy);
+        }
+
         cod::color::fg(140);
         cod::pixel('&', self.player.x * 2 + ox, self.player.y + oy);
         cod::color::de();
+    }
+
+    pub fn spawn(&mut self, entity: EntityKind, x: u32, y: u32) {
+        if x < WIDTH as u32 && y < WIDTH as u32 {
+            self.entities.push(Entity { kind: entity, x, y, alive: true });
+        }
     }
 
     pub fn go(&mut self, direction: Direction) -> TurnResult {
@@ -162,7 +225,25 @@ impl Map {
             _ => {
                 self.player.x = x;
                 self.player.y = y;
-                TurnResult::Ok
+
+                let mut res = TurnResult::Ok;
+
+                let mut kill = Vec::new();
+                for (i, entity) in self.entities.iter_mut().enumerate() {
+                    if entity.x == x && entity.y == y {
+                        res = entity.interact(&mut self.player)?;
+
+                        if !entity.alive {
+                            kill.push(i);
+                        }
+                    }
+                }
+
+                for i in kill {
+                    self.entities.remove(i);
+                }
+
+                res
             }
         }
     }

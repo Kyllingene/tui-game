@@ -12,7 +12,9 @@ pub fn handle(map: &mut Map) -> TurnResult {
             Key::ArrowDown => map.go(Direction::Down),
             Key::ArrowLeft => map.go(Direction::Left),
             Key::ArrowRight => map.go(Direction::Right),
-            Key::Char('q') => TurnResult::Quit,
+            Key::Char('q')
+                | Key::Char('\x04') => TurnResult::Quit,
+            Key::Char(' ') => map.interact(),
             _ => TurnResult::InvalidKey(key),
         }
     } else {
@@ -25,10 +27,14 @@ pub enum TurnResult {
     Ok,
     NoKey,
     InvalidKey(Key),
+    Fight(u32, u32),
+    WonFight,
     InvalidMove(Direction),
     WaterMove,
+    Ate(u32),
     HungerDeath,
     ThirstDeath,
+    ViolentDeath,
     Quit,
 }
 
@@ -42,11 +48,15 @@ impl TurnResult {
             Self::Ok |
             Self::NoKey |
             Self::InvalidKey(_) |
+            Self::Fight(_, _) |
+            Self::WonFight |
             Self::InvalidMove(_) |
-            Self::WaterMove => false,
+            Self::WaterMove |
+            Self::Ate(_) => false,
             Self::Quit |
             Self::HungerDeath |
-            Self::ThirstDeath => true,
+            Self::ThirstDeath |
+            Self::ViolentDeath => true,
         }
     }
 }

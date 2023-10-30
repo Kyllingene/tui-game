@@ -13,4 +13,7 @@ pub struct Player {
 
     pub hunger: u32,
     pub thirst: u32,
+
+    pub health: u32,
+    pub damage: u32,
 }

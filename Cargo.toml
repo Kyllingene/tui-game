@@ -7,3 +7,4 @@ edition = "2021"
 
 [dependencies]
 cod = { version = "6.0", features = ["input"] }
+rand = "0.8.5"
