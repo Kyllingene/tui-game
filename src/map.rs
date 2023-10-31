@@ -52,6 +52,13 @@ impl Map {
             .copied()
     }
 
+    pub fn set(&mut self, x: u32, y: u32, tile: Tile) {
+        self.tiles
+            .get_mut(y as usize)
+            .and_then(|row| row.get_mut(x as usize))
+            .map(|t| *t = tile);
+    }
+
     pub fn draw(&self, mut x: u32, mut y: u32) {
         let ox = x;
         let mut dark = false;
@@ -84,7 +91,7 @@ impl Map {
                         kind: TileKind::Water,
                     }
                 }
-                '"' => {
+                '_' => {
                     out.tiles[y][x] = Tile {
                         kind: TileKind::Grass,
                     }
@@ -138,7 +145,7 @@ impl Map {
 pub enum TileKind {
     #[default]
     Water = b'~',
-    Grass = b'"',
+    Grass = b'_',
     Forest = b'$',
     Hill = b'n',
     Mountain = b'A',
@@ -151,27 +158,35 @@ impl TileKind {
             Self::Grass => (0, 153, 25),
             Self::Forest => (0, 77, 38),
             Self::Hill => (255, 238, 230),
-            Self::Mountain => (0, 17, 26),
+            Self::Mountain => (230, 255, 242),
         }
     }
 
     pub fn faded_color(&self) -> (u8, u8, u8) {
-        if *self == Self::Mountain { return (0, 7, 10); }
-
         let (mut r, mut g, mut b) = self.color();
-        r = r.saturating_sub(125);
-        g = g.saturating_sub(125);
-        b = b.saturating_sub(125);
+
+        let r_dim = r as f32 / 255.0;
+        let g_dim = g as f32 / 255.0;
+        let b_dim = b as f32 / 255.0;
+
+        r = (r as f32 * r_dim * 0.5) as u8;
+        g = (g as f32 * g_dim * 0.5) as u8;
+        b = (b as f32 * b_dim * 0.5) as u8;
+
         (r, g, b)
     }
 
     pub fn dark_faded_color(&self) -> (u8, u8, u8) {
-        if *self == Self::Mountain { return (0, 5, 8); }
-
         let (mut r, mut g, mut b) = self.color();
-        r = r.saturating_sub(135);
-        g = g.saturating_sub(135);
-        b = b.saturating_sub(135);
+
+        let r_dim = r as f32 / (255.0 * 0.8);
+        let g_dim = g as f32 / (255.0 * 0.8);
+        let b_dim = b as f32 / (255.0 * 0.8);
+
+        r = (r as f32 * r_dim * 0.5) as u8;
+        g = (g as f32 * g_dim * 0.5) as u8;
+        b = (b as f32 * b_dim * 0.5) as u8;
+
         (r, g, b)
     }
 }
@@ -185,8 +200,10 @@ impl Tile {
     pub fn draw(&self, x: u32, y: u32, dark_bg: bool) {
         let (r, g, b) = self.kind.color();
         cod::color::tc_fg(r, g, b);
+
         let (r, g, b) = if dark_bg { self.kind.dark_faded_color() } else { self.kind.faded_color() };
         cod::color::tc_bg(r, g, b);
+
         cod::blit(format!("{0}{0}", self.kind as u8 as char), x, y);
     }
 }

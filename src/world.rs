@@ -39,35 +39,39 @@ impl World {
         1.0 + self.turn as f32 / 15.0
     }
 
-    pub fn draw_message(&self, msg: impl Display) {
-        cod::goto::bot();
+    pub fn draw_message(&self, msg: impl Display, color: u8) {
+        cod::goto::pos(1, HEIGHT as u32);
         cod::color::de();
-        cod::color::fg(1);
-        cod::goto::up(1);
+        cod::color::fg(color);
         cod::clear::line();
-        println!("{msg}");
+        print!("{msg}");
+        cod::goto::bot();
+        cod::flush();
     }
 
     pub fn draw_result(&self, res: TurnResult) {
         self.draw_key();
         match res {
-            TurnResult::NoKey => self.draw_message("Please press a key"),
-            TurnResult::InvalidMove(_) => self.draw_message("You can't move there"),
-            TurnResult::WaterMove => self.draw_message("You drank your fill"),
-            TurnResult::InvalidKey(_) => self.draw_message("That's not a valid key"),
+            TurnResult::NoKey => self.draw_message("Please press a key", 1),
+            TurnResult::InvalidMove(_) => self.draw_message("You can't move there", 1),
+            TurnResult::WaterMove => self.draw_message("You drank your fill", 2),
+            TurnResult::InvalidKey(_) => self.draw_message("That's not a valid key", 1),
             TurnResult::Fight(dmg, hp) => self.draw_message(format!(
                 "You dealt {}, they dealt {dmg} and are at {hp}",
                 self.player.damage
-            )),
+            ), 3),
             TurnResult::WonFight(upgrade) => {
                 if upgrade {
-                    self.draw_message("You won and got an upgrade!")
+                    self.draw_message("You won and got an upgrade!", 2)
                 } else {
-                    self.draw_message("You killed the enemy!")
+                    self.draw_message("You killed the enemy!", 2)
                 }
             }
+            TurnResult::DefeatedBoss(_id) => {
+                self.draw_message("You killed the boss!", 2);
+            }
             TurnResult::Ate(food) => {
-                self.draw_message(format!("You ate {food} food and healed some"))
+                self.draw_message(format!("You ate {food} food and healed some"), 2)
             }
             _ => {}
         }
@@ -125,6 +129,7 @@ impl World {
 
         TurnResult::Ok
     }
+
     pub fn interact(&mut self) -> TurnResult {
         let mut kill = None;
         let mut res = TurnResult::Ok;
@@ -134,7 +139,7 @@ impl World {
             .enumerate()
             .find(|(_, e)| e.x == self.player.x && e.y == self.player.y)
         {
-            res = entity.interact(&mut self.player)?;
+            res = entity.interact(&mut self.player, &mut self.map)?;
 
             if !entity.alive {
                 kill = Some(*i);
@@ -185,8 +190,9 @@ impl World {
             let (r, g, b) = kind.dark_faded_color();
             cod::color::tc_bg(r, g, b);
             print!("{kind:?}: {}  ", kind as u8 as char);
-            cod::color::de();
         }
+
+        cod::color::de();
 
         cod::color::fg(108);
         print!("\nFood: +  ");
@@ -217,7 +223,7 @@ impl World {
     }
 
     #[allow(dead_code)]
-    pub fn spawn(&mut self, entity: EntityKind, x: u32, y: u32) {
+    pub fn spawn(&mut self, x: u32, y: u32, entity: EntityKind) {
         if x < WIDTH as u32 && y < WIDTH as u32 {
             self.entities.push(Entity {
                 kind: entity,
@@ -250,7 +256,7 @@ impl World {
                 let mut kill = Vec::new();
                 for (i, entity) in self.entities.iter_mut().enumerate() {
                     if entity.x == x && entity.y == y {
-                        res = entity.interact(&mut self.player)?;
+                        res = entity.interact(&mut self.player, &mut self.map)?;
 
                         if !entity.alive {
                             kill.push(i);

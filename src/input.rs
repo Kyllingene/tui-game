@@ -27,6 +27,7 @@ pub enum TurnResult {
     InvalidKey(Key),
     Fight(u32, u32),
     WonFight(bool),
+    DefeatedBoss(u32),
     InvalidMove(Direction),
     WaterMove,
     Ate(u32),
@@ -48,6 +49,7 @@ impl TurnResult {
             | Self::InvalidKey(_)
             | Self::Fight(_, _)
             | Self::WonFight(_)
+            | Self::DefeatedBoss(_)
             | Self::InvalidMove(_)
             | Self::WaterMove
             | Self::Ate(_) => false,

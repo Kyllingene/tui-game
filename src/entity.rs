@@ -3,9 +3,9 @@ use std::ops::Range;
 use rand::{thread_rng, Rng};
 
 use crate::input::TurnResult;
-use crate::map::{Direction, TileKind, HEIGHT, WIDTH};
-use crate::player::Player;
+use crate::map::{Direction, Tile, TileKind, Map, HEIGHT, WIDTH};
 use crate::world::World;
+use crate::player::Player;
 
 const FOOD_MOVE_CHANCE: f32 = 0.65;
 const ENEMY_MOVE_CHANCE: f32 = 0.60;
@@ -62,8 +62,9 @@ impl Entity {
         let mut rng = thread_rng();
         let mut iterations = 0;
         'outer: loop {
-            for y in 0..HEIGHT as u32 {
-                for x in 0..WIDTH as u32 {
+            // TODO: fix this filthy hack
+            for y in (0..HEIGHT as u32).rev() {
+                for x in (0..WIDTH as u32).rev() {
                     if world.player.x == x && world.player.y == y {
                         continue;
                     }
@@ -74,14 +75,17 @@ impl Entity {
                         TileKind::Grass => match kind {
                             EntityKind::Food { .. } => 0.75,
                             EntityKind::Enemy { .. } => 0.25,
+                            EntityKind::Boss { .. } => unreachable!("Bosses cannot be spawned randomly"),
                         },
                         TileKind::Forest => match kind {
                             EntityKind::Food { .. } => 0.60,
                             EntityKind::Enemy { .. } => 0.25,
+                            EntityKind::Boss { .. } => unreachable!("Bosses cannot be spawned randomly"),
                         },
                         TileKind::Hill => match kind {
                             EntityKind::Food { .. } => 0.10,
                             EntityKind::Enemy { .. } => 0.75,
+                            EntityKind::Boss { .. } => unreachable!("Bosses cannot be spawned randomly"),
                         },
                     } / (WIDTH * HEIGHT) as f32
                         + (iterations as f32 * 0.1);
@@ -97,7 +101,7 @@ impl Entity {
         }
     }
 
-    pub fn interact(&mut self, player: &mut Player) -> TurnResult {
+    pub fn interact(&mut self, player: &mut Player, map: &mut Map) -> TurnResult {
         match &mut self.kind {
             EntityKind::Food { food } => {
                 player.hunger = player.hunger.saturating_sub(*food);
@@ -111,6 +115,28 @@ impl Entity {
                 if player.damage >= *health {
                     self.alive = false;
                     TurnResult::WonFight(false)
+                } else if *damage >= player.health {
+                    TurnResult::ViolentDeath
+                } else {
+                    *health -= player.damage;
+                    player.health -= *damage;
+
+                    TurnResult::Fight(*damage, *health)
+                }
+            }
+
+            EntityKind::Boss { health, damage, damage_gain, block, id } => {
+                if player.damage >= *health {
+                    self.alive = false;
+                    player.damage += *damage_gain;
+
+                    let (dir, tile) = block;
+                    let diff = dir.diff();
+
+                    let x = self.x.saturating_add_signed(diff.0);
+                    let y = self.y.saturating_add_signed(diff.1);
+                    map.set(x, y, *tile);
+                    TurnResult::DefeatedBoss(*id)
                 } else if *damage >= player.health {
                     TurnResult::ViolentDeath
                 } else {
@@ -143,12 +169,13 @@ impl Entity {
                 if move_chance <= ENEMY_MOVE_CHANCE {
                     let (x, y) = self.random_move(true, world, &mut rng);
                     if world.player.x == x && world.player.y == y {
-                        return self.interact(&mut world.player);
+                        return self.interact(&mut world.player, &mut world.map);
                     }
                 }
 
                 TurnResult::Ok
             }
+            EntityKind::Boss { .. } => { TurnResult::Ok }
         }
     }
 
@@ -207,6 +234,7 @@ impl Entity {
 pub enum EntityKind {
     Food { food: u32 },
     Enemy { health: u32, damage: u32 },
+    Boss { health: u32, damage: u32, id: u32, damage_gain: u32, block: (Direction, Tile) },
 }
 
 impl EntityKind {
@@ -214,6 +242,7 @@ impl EntityKind {
         match self {
             Self::Food { .. } => 108,
             Self::Enemy { .. } => 210,
+            Self::Boss { .. } => 224,
         }
     }
 
@@ -221,6 +250,7 @@ impl EntityKind {
         match self {
             Self::Food { .. } => '+',
             Self::Enemy { .. } => '!',
+            Self::Boss { .. } => '#',
         }
     }
 }
