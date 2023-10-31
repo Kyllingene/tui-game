@@ -40,10 +40,13 @@ impl World {
     }
 
     pub fn draw_message(&self, msg: impl Display, color: u8) {
-        cod::goto::pos(1, HEIGHT as u32);
+        cod::goto::pos(0, HEIGHT as u32);
+        //cod::clear::line();
         cod::color::de();
+        print!("{}+  ", "-".repeat(WIDTH * 2));
+
+        cod::goto::pos(1, HEIGHT as u32);
         cod::color::fg(color);
-        cod::clear::line();
         print!("{msg}");
         cod::goto::bot();
         cod::flush();

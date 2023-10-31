@@ -75,8 +75,11 @@ impl Map {
             };
             x = ox;
             y += 1;
+
+            cod::color::de_fg();
+            print!("|");
         }
-        println!();
+        println!("\n{}+", "-".repeat(WIDTH * 2));
     }
 
     pub fn parse(map: &str) -> Self {

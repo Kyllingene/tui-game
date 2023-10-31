@@ -65,6 +65,8 @@ fn main() {
 
         let res = world.update();
         if res.bad() {
+            world.draw(0, 0);
+
             world.draw_message(quip::random(res), 1);
             // world.draw_message(match res {
             //     TurnResult::Quit => "Goodbye, wimp",
