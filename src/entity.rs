@@ -225,6 +225,11 @@ impl Entity {
         let x = self.x * 2 + x + 1;
 
         cod::color::de_bg();
+        match self.kind {
+            EntityKind::Boss { .. } => cod::color::bg(9),
+            _ => {}
+        }
+
         cod::color::fg(self.kind.color());
         cod::pixel(self.kind.sprite(), x, y + self.y);
     }
@@ -242,7 +247,7 @@ impl EntityKind {
         match self {
             Self::Food { .. } => 108,
             Self::Enemy { .. } => 210,
-            Self::Boss { .. } => 224,
+            Self::Boss { .. } => 136,
         }
     }
 

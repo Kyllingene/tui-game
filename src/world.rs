@@ -71,7 +71,7 @@ impl World {
                 self.draw_message("You killed the boss!", 2);
             }
             TurnResult::Ate(food) => {
-                self.draw_message(format!("You ate {food} food and healed some"), 2)
+                self.draw_message(format!("You ate {food} food and healed 2"), 2)
             }
             _ => {}
         }
@@ -172,8 +172,9 @@ impl World {
         }
 
         cod::color::fg(140);
+        cod::color::de_bg();
         cod::pixel('&', self.player.x * 2 + x, self.player.y + y);
-        cod::color::de();
+        cod::color::de_fg();
     }
 
     fn draw_key(&self) {
@@ -199,6 +200,12 @@ impl World {
 
         cod::color::fg(210);
         print!("Enemy: +  ");
+
+        cod::color::fg(136);
+        cod::color::bg(9);
+        print!("Boss: #");
+        cod::color::de();
+        print!("  ");
 
         cod::color::fg(140);
         print!("\nPlayer: &  ");

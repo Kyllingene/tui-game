@@ -5,6 +5,7 @@ mod input;
 mod map;
 mod player;
 mod world;
+mod quip;
 
 use input::TurnResult;
 use entity::EntityKind;
@@ -64,13 +65,14 @@ fn main() {
 
         let res = world.update();
         if res.bad() {
-            world.draw_message(match res {
-                TurnResult::Quit => "Goodbye, wimp",
-                TurnResult::HungerDeath => "You died of hunger",
-                TurnResult::ThirstDeath => "You died of thirst",
-                TurnResult::ViolentDeath => "You died in glorious battle",
-                _ => panic!("Unhandled bad outcome: {res:?}"),
-            }, 1);
+            world.draw_message(quip::random(res), 1);
+            // world.draw_message(match res {
+            //     TurnResult::Quit => "Goodbye, wimp",
+            //     TurnResult::HungerDeath => "You died of hunger",
+            //     TurnResult::ThirstDeath => "You died of thirst",
+            //     TurnResult::ViolentDeath => "You died in glorious battle",
+            //     _ => panic!("Unhandled bad outcome: {res:?}"),
+            // }, 1);
 
             break;
         }
