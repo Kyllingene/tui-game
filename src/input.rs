@@ -2,19 +2,17 @@ use std::ops::ControlFlow;
 
 use cod::Key;
 
-use crate::map::Map;
-use crate::Direction;
-
-pub fn handle(map: &mut Map) -> TurnResult {
+use crate::map::Direction;
+use crate::world::World;
+pub fn handle(world: &mut World) -> TurnResult {
     if let Some(key) = cod::read::key() {
         match key {
-            Key::ArrowUp => map.go(Direction::Up),
-            Key::ArrowDown => map.go(Direction::Down),
-            Key::ArrowLeft => map.go(Direction::Left),
-            Key::ArrowRight => map.go(Direction::Right),
-            Key::Char('q')
-                | Key::Char('\x04') => TurnResult::Quit,
-            Key::Char(' ') => map.interact(),
+            Key::ArrowUp => world.go(Direction::Up),
+            Key::ArrowDown => world.go(Direction::Down),
+            Key::ArrowLeft => world.go(Direction::Left),
+            Key::ArrowRight => world.go(Direction::Right),
+            Key::Char('q') | Key::Char('\x04') => TurnResult::Quit,
+            Key::Char(' ') => world.interact(),
             _ => TurnResult::InvalidKey(key),
         }
     } else {
@@ -45,31 +43,32 @@ impl TurnResult {
 
     pub fn bad(&self) -> bool {
         match self {
-            Self::Ok |
-            Self::NoKey |
-            Self::InvalidKey(_) |
-            Self::Fight(_, _) |
-            Self::WonFight(_) |
-            Self::InvalidMove(_) |
-            Self::WaterMove |
-            Self::Ate(_) => false,
-            Self::Quit |
-            Self::HungerDeath |
-            Self::ThirstDeath |
-            Self::ViolentDeath => true,
+            Self::Ok
+            | Self::NoKey
+            | Self::InvalidKey(_)
+            | Self::Fight(_, _)
+            | Self::WonFight(_)
+            | Self::InvalidMove(_)
+            | Self::WaterMove
+            | Self::Ate(_) => false,
+            Self::Quit | Self::HungerDeath | Self::ThirstDeath | Self::ViolentDeath => true,
         }
     }
 }
 
 impl std::ops::FromResidual for TurnResult {
-    fn from_residual(residual: Self) -> Self { residual }
+    fn from_residual(residual: Self) -> Self {
+        residual
+    }
 }
 
 impl std::ops::Try for TurnResult {
     type Output = Self;
     type Residual = Self;
 
-    fn from_output(output: Self) -> Self { output }
+    fn from_output(output: Self) -> Self {
+        output
+    }
     fn branch(self) -> ControlFlow<Self, Self> {
         if self.good() {
             ControlFlow::Continue(self)
@@ -78,4 +77,3 @@ impl std::ops::Try for TurnResult {
         }
     }
 }
-

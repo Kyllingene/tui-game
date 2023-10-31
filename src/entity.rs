@@ -1,11 +1,11 @@
 use std::ops::Range;
 
-use rand::{Rng, thread_rng};
+use rand::{thread_rng, Rng};
 
-use crate::map::{Map, TileKind, WIDTH, HEIGHT};
-use crate::player::Player;
 use crate::input::TurnResult;
-use crate::Direction;
+use crate::map::{Direction, TileKind, HEIGHT, WIDTH};
+use crate::player::Player;
+use crate::world::World;
 
 const FOOD_MOVE_CHANCE: f32 = 0.65;
 const ENEMY_MOVE_CHANCE: f32 = 0.60;
@@ -23,37 +23,51 @@ pub struct Entity {
 }
 
 impl Entity {
-    pub fn spawn_random(map: &Map) -> Option<Entity> {
-        if map.entities.len() >= map.max_entities() as usize { return None; }
+    pub fn spawn_random(world: &World) -> Option<Entity> {
+        if world.entities.len() >= world.max_entities() as usize {
+            return None;
+        }
 
         let mut rng = thread_rng();
         let r = rng.gen::<f32>();
-        if r <= SPAWN_CHANCE * map.spawn_chance_coeff() {
+        if r <= SPAWN_CHANCE * world.spawn_chance_coeff() {
             let r = rng.gen();
             let kind = if FOOD_SPAWN_AREA.contains(&r) {
-                EntityKind::Food { food: rng.gen_range(2..8) }
+                EntityKind::Food {
+                    food: rng.gen_range(2..8),
+                }
             } else if ENEMY_SPAWN_AREA.contains(&r) {
-                EntityKind::Enemy { health: rng.gen_range(2..(map.player.damage / 4).max(3)), damage: rng.gen_range(1..(map.player.health / 3).max(2)) }
+                EntityKind::Enemy {
+                    health: rng.gen_range(2..(world.player.damage / 4).max(3)),
+                    damage: rng.gen_range(1..(world.player.health / 3).max(2)),
+                }
             } else {
                 return None;
             };
 
-            let (x, y) = Self::pick_spawn_tile(&kind, map);
+            let (x, y) = Self::pick_spawn_tile(&kind, world);
 
-            Some(Entity { x, y, kind, alive: true })
+            Some(Entity {
+                x,
+                y,
+                kind,
+                alive: true,
+            })
         } else {
             None
         }
     }
 
-    pub fn pick_spawn_tile(kind: &EntityKind, map: &Map) -> (u32, u32) {
+    pub fn pick_spawn_tile(kind: &EntityKind, world: &World) -> (u32, u32) {
         let mut rng = thread_rng();
         let mut iterations = 0;
         'outer: loop {
             for y in 0..HEIGHT as u32 {
                 for x in 0..WIDTH as u32 {
-                    if map.player.x == x && map.player.y == y { continue; }
-                    let tile = map.get_tile(x, y).unwrap();
+                    if world.player.x == x && world.player.y == y {
+                        continue;
+                    }
+                    let tile = world.map.get(x, y).unwrap();
 
                     let chance = match tile.kind {
                         TileKind::Water | TileKind::Mountain => continue,
@@ -63,13 +77,14 @@ impl Entity {
                         },
                         TileKind::Forest => match kind {
                             EntityKind::Food { .. } => 0.60,
-                            EntityKind::Enemy { .. } => 0.40,
+                            EntityKind::Enemy { .. } => 0.25,
                         },
                         TileKind::Hill => match kind {
-                            EntityKind::Food { .. } => 0.25,
+                            EntityKind::Food { .. } => 0.10,
                             EntityKind::Enemy { .. } => 0.75,
                         },
-                    } / ( WIDTH * HEIGHT ) as f32 + ( iterations as f32 * 0.1 );
+                    } / (WIDTH * HEIGHT) as f32
+                        + (iterations as f32 * 0.1);
 
                     let r: f32 = rng.gen();
                     if r <= chance {
@@ -84,14 +99,15 @@ impl Entity {
 
     pub fn interact(&mut self, player: &mut Player) -> TurnResult {
         match &mut self.kind {
-             EntityKind::Food { food } => {
+            EntityKind::Food { food } => {
                 player.hunger = player.hunger.saturating_sub(*food);
+                player.health = (player.health + 2).min(10);
                 self.alive = false;
 
                 TurnResult::Ate(*food)
-             }
+            }
 
-             EntityKind::Enemy { health, damage } => {
+            EntityKind::Enemy { health, damage } => {
                 if player.damage >= *health {
                     self.alive = false;
                     TurnResult::WonFight(false)
@@ -103,17 +119,17 @@ impl Entity {
 
                     TurnResult::Fight(*damage, *health)
                 }
-             }
+            }
         }
     }
 
-    pub fn ai(&mut self, map: &mut Map) -> TurnResult {
+    pub fn ai(&mut self, world: &mut World) -> TurnResult {
         let mut rng = thread_rng();
         match &mut self.kind {
             EntityKind::Food { .. } => {
                 let move_chance: f32 = rng.gen();
                 if move_chance <= FOOD_MOVE_CHANCE {
-                    self.random_move(false, map, &mut rng);
+                    self.random_move(false, world, &mut rng);
                 }
 
                 TurnResult::Ok
@@ -122,11 +138,12 @@ impl Entity {
                 let health_coeff = (*health as f32).tanh() / 2.0 + 0.5;
                 let damage_coeff = (*damage as f32).tanh() / 2.0 + 0.5;
 
-                let move_chance = rng.gen::<f32>() * health_coeff * damage_coeff * ENEMY_MOVE_CHANCE;
+                let move_chance =
+                    rng.gen::<f32>() * health_coeff * damage_coeff * ENEMY_MOVE_CHANCE;
                 if move_chance <= ENEMY_MOVE_CHANCE {
-                    let (x, y) = self.random_move(true, map, &mut rng);
-                    if map.player.x == x && map.player.y == y {
-                        return self.interact(&mut map.player);
+                    let (x, y) = self.random_move(true, world, &mut rng);
+                    if world.player.x == x && world.player.y == y {
+                        return self.interact(&mut world.player);
                     }
                 }
 
@@ -135,22 +152,35 @@ impl Entity {
         }
     }
 
-    pub fn random_move(&mut self, into_player: bool, map: &Map, rng: &mut impl Rng) -> (u32, u32) {
+    pub fn random_move(
+        &mut self,
+        into_player: bool,
+        world: &World,
+        rng: &mut impl Rng,
+    ) -> (u32, u32) {
         let mut iterations = 0;
         let mut x;
         let mut y;
         loop {
-            if iterations >= 8 { return (self.x, self.y); }
+            if iterations >= 8 {
+                return (self.x, self.y);
+            }
             iterations += 1;
 
             let diff = rng.gen::<Direction>().diff();
             x = self.x.saturating_add_signed(diff.0);
             y = self.y.saturating_add_signed(diff.1);
 
-            if !into_player && map.player.x == x && map.player.y == y { continue; };
-            if map.entities.iter().any(|e| e.x == x && e.y == y) { continue; };
+            if !into_player && world.player.x == x && world.player.y == y {
+                continue;
+            };
+            if world.entities.iter().any(|e| e.x == x && e.y == y) {
+                continue;
+            };
 
-            let Some(tile) = map.get_tile(x, y) else { continue; };
+            let Some(tile) = world.map.get(x, y) else {
+                continue;
+            };
 
             match tile.kind {
                 TileKind::Water | TileKind::Mountain => continue,
@@ -194,4 +224,3 @@ impl EntityKind {
         }
     }
 }
-

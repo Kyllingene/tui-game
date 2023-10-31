@@ -4,46 +4,13 @@ mod entity;
 mod input;
 mod map;
 mod player;
-
-use rand::Rng;
-use rand::distributions::{Distribution, Standard, Uniform};
+mod world;
 
 use input::TurnResult;
-use map::{TileKind, HEIGHT};
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub enum Direction {
-    Up,
-    Down,
-    Left,
-    Right,
-}
-
-impl Direction {
-    pub fn diff(&self) -> (i32, i32) {
-        match self {
-            Self::Up => (0, -1),
-            Self::Down => (0, 1),
-            Self::Left => (-1, 0),
-            Self::Right => (1, 0),
-        }
-    }
-}
-
-impl Distribution<Direction> for Standard {
-    fn sample<R: Rng + ?Sized>(&self, rng: &mut R) -> Direction {
-        match Uniform::new(0, 4).sample(rng) {
-            0 => Direction::Up,
-            1 => Direction::Down,
-            2 => Direction::Left,
-            3 => Direction::Right,
-            _ => unreachable!()
-        }
-    }
-}
+use map::{WIDTH, HEIGHT};
 
 fn main() {
-    let mut map = map::Map::parse(
+    let mut world = world::World::new(
         r#"
             ~~~~~~~~~~~~~~~~~~~~~~~~
             ~~""""""""~~~~~~~$nn$~~~
@@ -66,73 +33,36 @@ fn main() {
         14,
     );
 
-    // map.spawn(entity::EntityKind::Food { food: 3 }, 2, 2);
-    map.spawn(entity::EntityKind::Enemy { health: 3, damage: 2 }, 2, 2);
-
     loop {
         cod::clear::all();
-        map.draw(0, 0);
-
-        draw_key(&map);
+        world.draw(0, 0);
 
         cod::color::de();
         cod::goto::bot();
         cod::flush();
 
-        let res = map.update();
+        let res = world.update();
         if res.bad() {
-            cod::goto::bot();
+            let msg = match res {
+                TurnResult::Quit => "Goodbye, wimp",
+                TurnResult::HungerDeath => "You died by hunger",
+                TurnResult::ThirstDeath => "You died by thirst",
+                TurnResult::ViolentDeath => "You died in battle",
+                _ => panic!("Unhandled bad outcome: {res:?}"),
+            };
+
+            let x = (WIDTH / 2).saturating_sub(msg.len() / 2);
+            let y = HEIGHT / 2 - 1;
+
             cod::color::de();
             cod::color::fg(1);
-            cod::goto::up(1);
+            cod::goto::pos(x as u32, y as u32);
             cod::clear::line();
-            match res {
-                TurnResult::Quit => println!("Goodbye, wimp"),
-                TurnResult::HungerDeath => println!("You died by hunger"),
-                TurnResult::ThirstDeath => println!("You died by thirst"),
-                TurnResult::ViolentDeath => println!("You died in battle"),
-                _ => panic!("Unhandled bad outcome: {res:#?}"),
-            }
+            print!("{msg}");
+            cod::goto::bot();
             cod::flush();
 
             break;
         }
     }
 }
-
-fn draw_key(map: &map::Map) {
-        cod::goto::pos(0, HEIGHT as u32 + 1);
-        cod::color::de_bg();
-        for kind in [
-            TileKind::Water,
-            TileKind::Grass,
-            TileKind::Forest,
-            TileKind::Hill,
-            TileKind::Mountain,
-        ] {
-            cod::color::fg(kind.color());
-            print!("{kind:?}: {}  ", kind as u8 as char);
-        }
-
-        cod::color::fg(108);
-        print!("\nFood: +  ");
-
-        cod::color::fg(210);
-        print!("Enemy: +  ");
-
-        cod::color::fg(140);
-        print!("\nPlayer: &  ");
-
-        cod::color::fg(1);
-        print!("Health: {:2}  ", map.player.health);
-
-        cod::color::fg(7);
-        print!("Damage: {:2}  ", map.player.damage);
-
-        cod::color::fg(223);
-        print!("Hunger: {:2}  ", player::constants::HUNGER_CAP - map.player.hunger);
-
-        cod::color::fg(12);
-        print!("Thirst: {:2}", player::constants::THIRST_CAP - map.player.thirst);
-}
-
