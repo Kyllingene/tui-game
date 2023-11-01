@@ -25,7 +25,13 @@ pub struct Entity {
 
 impl Entity {
     pub const fn new(x: u32, y: u32, kind: EntityKind, persist: bool) -> Self {
-        Self { x, y, kind, alive: true, persist }
+        Self {
+            x,
+            y,
+            kind,
+            alive: true,
+            persist,
+        }
     }
 
     pub fn spawn_random(world: &World) -> Option<Entity> {

@@ -1,7 +1,9 @@
 [package]
-name = "tui-game"
+name = "frob-adventure"
 version = "0.1.0"
 edition = "2021"
+
+description = "A hobby retro-style TUI game."
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 

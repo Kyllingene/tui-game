@@ -14,10 +14,7 @@ fn main() {
     title::draw(2, 2);
     cod::read::key();
 
-    let mut world = world::World::new(
-        12,
-        14,
-    );
+    let mut world = world::World::new(12, 14);
 
     loop {
         cod::clear::all();

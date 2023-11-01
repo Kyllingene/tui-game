@@ -2,9 +2,9 @@ use std::collections::HashMap;
 
 use map_macro::hash_map;
 
-use crate::sector::Sector;
 use crate::entity::{Entity, EntityKind};
-use crate::map::{Tile, TileKind, Direction};
+use crate::map::{Direction, Tile, TileKind};
+use crate::sector::Sector;
 
 pub const START: &str = "start";
 

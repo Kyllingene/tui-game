@@ -112,7 +112,6 @@ impl World {
             }
 
             self.draw_message("You took 1 damage from thirst!", 1);
-
         } else if self.player.hunger > HUNGER_CAP {
             return TurnResult::HungerDeath;
         }
@@ -282,10 +281,10 @@ impl World {
             let neighbor = self.map.sector().neighbor(direction);
             if let Some(new_sector) = neighbor {
                 let entities = std::mem::take(&mut self.entities);
-                self.map.save_entities(self.map.current_sector.id, entities
-                    .into_iter()
-                    .filter(|e| e.persist)
-                    .collect());
+                self.map.save_entities(
+                    self.map.current_sector.id,
+                    entities.into_iter().filter(|e| e.persist).collect(),
+                );
                 self.entities = self.map.load(new_sector);
 
                 match direction {

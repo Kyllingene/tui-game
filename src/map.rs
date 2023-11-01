@@ -47,22 +47,23 @@ pub struct Map {
 }
 
 impl Map {
-    pub fn new(
-        sectors: HashMap<&'static str, Sector>,
-        start: &'static str,
-    ) -> (Vec<Entity>, Self) {
+    pub fn new(sectors: HashMap<&'static str, Sector>, start: &'static str) -> (Vec<Entity>, Self) {
         let current_sector = sectors
             .get(start)
             .expect("Tried to initialize map with invalid start sector")
             .clone();
-        (current_sector.entities().to_vec(), Self {
-            sectors,
-            current_sector,
-        })
+        (
+            current_sector.entities().to_vec(),
+            Self {
+                sectors,
+                current_sector,
+            },
+        )
     }
 
     pub fn load(&mut self, id: &'static str) -> Vec<Entity> {
-        self.current_sector = self.sectors
+        self.current_sector = self
+            .sectors
             .get(id)
             .expect("Found invalid sector identifier")
             .clone();
@@ -71,7 +72,8 @@ impl Map {
     }
 
     pub fn save_entities(&mut self, id: &str, entities: Vec<Entity>) {
-        self.sectors.get_mut(id)
+        self.sectors
+            .get_mut(id)
             .expect("Found invalid sector identifier")
             .clone()
             .save_entities(entities);

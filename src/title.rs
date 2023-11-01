@@ -29,4 +29,3 @@ fn logo(x: u32, y: u32) {
     cod::color::fg(22);
     cod::blit_transparent(LOGO_SHADING, x, y);
 }
-
