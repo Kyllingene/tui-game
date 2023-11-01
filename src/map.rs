@@ -1,10 +1,14 @@
+use std::collections::HashMap;
+
 use rand::distributions::{Distribution, Standard, Uniform};
 use rand::Rng;
 
-pub const WIDTH: usize = 24;
-pub const HEIGHT: usize = 16;
+use crate::entity::Entity;
+use crate::sector::Sector;
+pub use crate::sector::{HEIGHT, WIDTH};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[repr(usize)]
 pub enum Direction {
     Up,
     Down,
@@ -35,34 +39,68 @@ impl Distribution<Direction> for Standard {
     }
 }
 
-#[derive(Debug, Default, Clone)]
+#[derive(Debug)]
 pub struct Map {
-    pub tiles: [[Tile; WIDTH]; HEIGHT],
+    pub sectors: HashMap<&'static str, Sector>,
+    pub current_sector: Sector,
+    //pub current_sector: &'static str,
 }
 
 impl Map {
-    pub fn new() -> Self {
-        Self::default()
+    pub fn new(
+        sectors: HashMap<&'static str, Sector>,
+        start: &'static str,
+    ) -> (Vec<Entity>, Self) {
+        let current_sector = sectors
+            .get(start)
+            .expect("Tried to initialize map with invalid start sector")
+            .clone();
+        (current_sector.entities().to_vec(), Self {
+            sectors,
+            current_sector,
+        })
+    }
+
+    pub fn load(&mut self, id: &'static str) -> Vec<Entity> {
+        self.current_sector = self.sectors
+            .get(id)
+            .expect("Found invalid sector identifier")
+            .clone();
+
+        self.current_sector.entities().to_vec()
+    }
+
+    pub fn save_entities(&mut self, id: &str, entities: Vec<Entity>) {
+        self.sectors.get_mut(id)
+            .expect("Found invalid sector identifier")
+            .clone()
+            .save_entities(entities);
+    }
+
+    pub fn sector(&self) -> &Sector {
+        &self.current_sector
+    }
+
+    pub fn sector_mut(&mut self) -> &mut Sector {
+        &mut self.current_sector
+    }
+
+    pub fn tiles(&self) -> &[[Tile; WIDTH]; HEIGHT] {
+        self.sector().tiles()
     }
 
     pub fn get(&self, x: u32, y: u32) -> Option<Tile> {
-        self.tiles
-            .get(y as usize)
-            .and_then(|row| row.get(x as usize))
-            .copied()
+        self.sector().get(x, y)
     }
 
     pub fn set(&mut self, x: u32, y: u32, tile: Tile) {
-        self.tiles
-            .get_mut(y as usize)
-            .and_then(|row| row.get_mut(x as usize))
-            .map(|t| *t = tile);
+        self.sector_mut().set(x, y, tile)
     }
 
     pub fn draw(&self, mut x: u32, mut y: u32) {
         let ox = x;
         let mut dark = false;
-        for row in self.tiles {
+        for row in self.tiles() {
             for tile in row {
                 dark = !dark;
                 tile.draw(x, y, dark);
@@ -80,66 +118,6 @@ impl Map {
             print!("|");
         }
         println!("\n{}+", "-".repeat(WIDTH * 2));
-    }
-
-    pub fn parse(map: &str) -> Self {
-        let mut out = Self::new();
-
-        let mut x = 0;
-        let mut y = 0;
-        for ch in map.trim().chars() {
-            match ch {
-                '~' => {
-                    out.tiles[y][x] = Tile {
-                        kind: TileKind::Water,
-                    }
-                }
-                '_' => {
-                    out.tiles[y][x] = Tile {
-                        kind: TileKind::Grass,
-                    }
-                }
-                '$' => {
-                    out.tiles[y][x] = Tile {
-                        kind: TileKind::Forest,
-                    }
-                }
-                'n' => {
-                    out.tiles[y][x] = Tile {
-                        kind: TileKind::Hill,
-                    }
-                }
-                'A' => {
-                    out.tiles[y][x] = Tile {
-                        kind: TileKind::Mountain,
-                    }
-                }
-                '\n' => {
-                    if x != 0 {
-                        y += 1;
-                        if y >= HEIGHT {
-                            break;
-                        }
-                        x = 0;
-                    }
-
-                    continue;
-                }
-                ' ' | '\t' => continue,
-                _ => panic!("invalid tile: `{ch}`"),
-            }
-
-            x += 1;
-            if x >= WIDTH {
-                y += 1;
-                if y >= HEIGHT {
-                    break;
-                }
-                x = 0;
-            }
-        }
-
-        out
     }
 }
 
@@ -204,7 +182,11 @@ impl Tile {
         let (r, g, b) = self.kind.color();
         cod::color::tc_fg(r, g, b);
 
-        let (r, g, b) = if dark_bg { self.kind.dark_faded_color() } else { self.kind.faded_color() };
+        let (r, g, b) = if dark_bg {
+            self.kind.dark_faded_color()
+        } else {
+            self.kind.faded_color()
+        };
         cod::color::tc_bg(r, g, b);
 
         cod::blit(format!("{0}{0}", self.kind as u8 as char), x, y);

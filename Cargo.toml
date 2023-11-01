@@ -7,4 +7,5 @@ edition = "2021"
 
 [dependencies]
 cod = { version = "6.0", features = ["input"] }
-rand = "0.8.5"
+map-macro = "0.2.6"
+rand = "0.8"

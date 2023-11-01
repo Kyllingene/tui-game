@@ -1,4 +1,4 @@
-use rand::{Rng, thread_rng};
+use rand::{thread_rng, Rng};
 
 use crate::input::TurnResult;
 
@@ -14,9 +14,10 @@ pub fn random(res: TurnResult) -> &'static str {
         TurnResult::ViolentDeath => VIOLENT_QUIPS,
         TurnResult::Quit => QUIT_QUIPS,
         _ => panic!("Unhandled bad result: {res:?}"),
-    }.lines().collect::<Vec<_>>();
+    }
+    .lines()
+    .collect::<Vec<_>>();
 
     let i = thread_rng().gen_range(0..quips.len());
     quips[i]
 }
-

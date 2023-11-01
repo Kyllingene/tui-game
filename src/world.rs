@@ -4,10 +4,11 @@ use rand::{thread_rng, Rng};
 
 use crate::entity::{Entity, EntityKind};
 use crate::input::{self, TurnResult};
-use crate::map::{Direction, Map, TileKind, WIDTH, HEIGHT};
+use crate::map::{Direction, Map, TileKind, HEIGHT, WIDTH};
 use crate::player::{constants::*, Player};
+use crate::world_map::{sectors, START};
 
-#[derive(Debug, Default, Clone)]
+#[derive(Debug)]
 pub struct World {
     pub map: Map,
     pub player: Player,
@@ -16,9 +17,11 @@ pub struct World {
 }
 
 impl World {
-    pub fn new(map: &str, player_x: u32, player_y: u32) -> Self {
+    pub fn new(player_x: u32, player_y: u32) -> Self {
+        let (entities, map) = Map::new(sectors(), START);
         Self {
-            map: Map::parse(map),
+            // map: Map::parse(map),
+            map,
             player: Player {
                 x: player_x,
                 y: player_y,
@@ -27,7 +30,8 @@ impl World {
                 health: 10,
                 damage: 1,
             },
-            ..Default::default()
+            entities,
+            turn: 0,
         }
     }
 
@@ -59,10 +63,13 @@ impl World {
             TurnResult::InvalidMove(_) => self.draw_message("You can't move there", 1),
             TurnResult::WaterMove => self.draw_message("You drank your fill", 2),
             TurnResult::InvalidKey(_) => self.draw_message("That's not a valid key", 1),
-            TurnResult::Fight(dmg, hp) => self.draw_message(format!(
-                "You dealt {}, they dealt {dmg} and are at {hp}",
-                self.player.damage
-            ), 3),
+            TurnResult::Fight(dmg, hp) => self.draw_message(
+                format!(
+                    "You dealt {}, they dealt {dmg} and are at {hp}",
+                    self.player.damage
+                ),
+                3,
+            ),
             TurnResult::WonFight(upgrade) => {
                 if upgrade {
                     self.draw_message("You won and got an upgrade!", 2)
@@ -220,16 +227,10 @@ impl World {
         print!("Damage: {:2}  ", self.player.damage);
 
         cod::color::fg(223);
-        print!(
-            "Hunger: {:2}  ",
-            HUNGER_CAP - self.player.hunger
-        );
+        print!("Hunger: {:2}  ", HUNGER_CAP - self.player.hunger);
 
         cod::color::fg(12);
-        print!(
-            "Thirst: {:2}",
-            THIRST_CAP - self.player.thirst
-        );
+        print!("Thirst: {:2}", THIRST_CAP - self.player.thirst);
     }
 
     #[allow(dead_code)]
@@ -240,6 +241,7 @@ impl World {
                 x,
                 y,
                 alive: true,
+                persist: false,
             });
         }
     }
@@ -249,6 +251,30 @@ impl World {
 
         let x = self.player.x.saturating_add_signed(diff_x);
         let y = self.player.y.saturating_add_signed(diff_y);
+
+        if (x == self.player.x && y == self.player.y) || x as usize >= WIDTH || y as usize >= HEIGHT
+        {
+            let neighbor = self.map.sector().neighbor(direction);
+            if let Some(new_sector) = neighbor {
+                let entities = std::mem::take(&mut self.entities);
+                self.map.save_entities(self.map.current_sector.id, entities
+                    .into_iter()
+                    .filter(|e| e.persist)
+                    .collect());
+                self.entities = self.map.load(new_sector);
+
+                match direction {
+                    Direction::Up => self.player.y = HEIGHT as u32 - 1,
+                    Direction::Down => self.player.y = 0,
+                    Direction::Left => self.player.x = WIDTH as u32 - 1,
+                    Direction::Right => self.player.x = 0,
+                }
+
+                return TurnResult::Ok;
+            } else {
+                return TurnResult::InvalidMove(direction);
+            }
+        }
 
         match self.map.get(x, y).unwrap().kind {
             TileKind::Mountain => TurnResult::InvalidMove(direction),
