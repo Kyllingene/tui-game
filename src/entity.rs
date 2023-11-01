@@ -7,7 +7,7 @@ use crate::map::{Direction, Map, Tile, TileKind, HEIGHT, WIDTH};
 use crate::player::Player;
 use crate::world::World;
 
-const FOOD_MOVE_CHANCE: f32 = 0.65;
+const FOOD_MOVE_CHANCE: f32 = 0.55;
 const ENEMY_MOVE_CHANCE: f32 = 0.60;
 
 const SPAWN_CHANCE: f32 = 0.5;
@@ -86,7 +86,7 @@ impl Entity {
                         TileKind::Water | TileKind::Mountain => continue,
                         TileKind::Grass => match kind {
                             EntityKind::Food { .. } => 0.75,
-                            EntityKind::Enemy { .. } => 0.25,
+                            EntityKind::Enemy { .. } => 0.15,
                             EntityKind::Boss { .. } => {
                                 unreachable!("Bosses cannot be spawned randomly")
                             }

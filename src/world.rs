@@ -35,7 +35,7 @@ impl World {
     }
 
     pub fn max_entities(&self) -> u32 {
-        4 + self.turn / 10
+        (4 + self.turn / 20).min((WIDTH * HEIGHT) as u32 / 6)
     }
 
     pub fn spawn_chance_coeff(&self) -> f32 {
@@ -119,9 +119,9 @@ impl World {
         let mut kill = Vec::new();
         let mut entities = self.entities.clone();
         for (i, entity) in entities.iter_mut().enumerate() {
-            res = entity.ai(self)?;
+            let r = entity.ai(self)?;
+            if r != TurnResult::Ok { res = r; self.draw_result(res); }
             self.draw(0, 0);
-            self.draw_result(res);
 
             if entity.alive {
                 self.entities[i].x = entity.x;

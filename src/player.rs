@@ -1,6 +1,6 @@
 pub mod constants {
     pub const HUNGER_INTERVAL: u32 = 8;
-    pub const THIRST_INTERVAL: u32 = 4;
+    pub const THIRST_INTERVAL: u32 = 6;
 
     pub const HUNGER_CAP: u32 = 10;
     pub const THIRST_CAP: u32 = 10;
