@@ -5,6 +5,7 @@ use map_macro::hash_map;
 use crate::entity::{Entity, EntityKind};
 use crate::map::{Direction, Tile, TileKind};
 use crate::sector::Sector;
+use crate::item::{Item, Buff};
 
 pub const START: &str = "start";
 
@@ -136,7 +137,12 @@ pub fn sectors() -> HashMap<&'static str, Sector> {
                 $n$$$$$$$$$$$$$_________
             "#,
             "plains3",
-            vec![],
+            vec![
+                Entity::new(4, 11,
+                    EntityKind::Item(Item::basic("Sword", Buff::Damage(2))),
+                    true,
+                ),
+            ],
             [Some("plains1"), None, None, None]
         ),
 

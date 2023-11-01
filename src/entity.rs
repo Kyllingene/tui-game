@@ -6,6 +6,7 @@ use crate::input::TurnResult;
 use crate::map::{Direction, Map, Tile, TileKind, HEIGHT, WIDTH};
 use crate::player::Player;
 use crate::world::World;
+use crate::item::Item;
 
 const FOOD_MOVE_CHANCE: f32 = 0.55;
 const ENEMY_MOVE_CHANCE: f32 = 0.60;
@@ -14,7 +15,7 @@ const SPAWN_CHANCE: f32 = 0.5;
 const FOOD_SPAWN_AREA: Range<f32> = 0.3..1.0;
 const ENEMY_SPAWN_AREA: Range<f32> = 0.0..0.3;
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Entity {
     pub x: u32,
     pub y: u32,
@@ -87,21 +88,21 @@ impl Entity {
                         TileKind::Grass => match kind {
                             EntityKind::Food { .. } => 0.75,
                             EntityKind::Enemy { .. } => 0.15,
-                            EntityKind::Boss { .. } => {
+                            EntityKind::Boss { .. } | EntityKind::Item(_) => {
                                 unreachable!("Bosses cannot be spawned randomly")
                             }
                         },
                         TileKind::Forest => match kind {
                             EntityKind::Food { .. } => 0.60,
                             EntityKind::Enemy { .. } => 0.25,
-                            EntityKind::Boss { .. } => {
+                            EntityKind::Boss { .. } | EntityKind::Item(_) => {
                                 unreachable!("Bosses cannot be spawned randomly")
                             }
                         },
                         TileKind::Hill => match kind {
                             EntityKind::Food { .. } => 0.10,
                             EntityKind::Enemy { .. } => 0.75,
-                            EntityKind::Boss { .. } => {
+                            EntityKind::Boss { .. } | EntityKind::Item(_) => {
                                 unreachable!("Bosses cannot be spawned randomly")
                             }
                         },
@@ -172,6 +173,15 @@ impl Entity {
                     TurnResult::Fight(*damage, *health)
                 }
             }
+
+            EntityKind::Item(item) => {
+                self.alive = false;
+                item.apply(player);
+                let name = item.name;
+                player.inventory.push(std::mem::take(item));
+
+                TurnResult::PickedUpItem(name)
+            }
         }
     }
 
@@ -201,7 +211,7 @@ impl Entity {
 
                 TurnResult::Ok
             }
-            EntityKind::Boss { .. } => TurnResult::Ok,
+            EntityKind::Boss { .. } | EntityKind::Item(_) => TurnResult::Ok,
         }
     }
 
@@ -260,7 +270,7 @@ impl Entity {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum EntityKind {
     Food {
         food: u32,
@@ -276,6 +286,7 @@ pub enum EntityKind {
         damage_gain: u32,
         block: (Direction, Tile),
     },
+    Item(Item),
 }
 
 impl EntityKind {
@@ -284,6 +295,7 @@ impl EntityKind {
             Self::Food { .. } => 108,
             Self::Enemy { .. } => 210,
             Self::Boss { .. } => 136,
+            Self::Item(_) => 56,
         }
     }
 
@@ -292,6 +304,7 @@ impl EntityKind {
             Self::Food { .. } => '+',
             Self::Enemy { .. } => '!',
             Self::Boss { .. } => '#',
+            Self::Item(_) => '?',
         }
     }
 }

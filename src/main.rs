@@ -2,6 +2,7 @@
 
 mod entity;
 mod input;
+mod item;
 mod map;
 mod player;
 mod quip;

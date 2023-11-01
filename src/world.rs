@@ -26,8 +26,12 @@ impl World {
                 y: player_y,
                 hunger: 0,
                 thirst: 0,
+                hunger_cap: INITIAL_HUNGER_CAP,
+                thirst_cap: INITIAL_THIRST_CAP, 
                 health: 10,
+                max_health: 10,
                 damage: 1,
+                inventory: Vec::new(),
             },
             entities,
             turn: 0,
@@ -101,18 +105,18 @@ impl World {
             self.player.hunger += 1;
         }
 
-        if self.turn % THIRST_INTERVAL == 0 && self.player.thirst <= THIRST_CAP {
+        if self.turn % THIRST_INTERVAL == 0 && self.player.thirst <= self.player.thirst_cap {
             self.player.thirst += 1;
         }
 
-        if self.player.thirst > THIRST_CAP {
+        if self.player.thirst > self.player.thirst_cap {
             self.player.health = self.player.health.saturating_sub(1);
             if self.player.health == 0 {
                 return TurnResult::ThirstDeath;
             }
 
             self.draw_message("You took 1 damage from thirst!", 1);
-        } else if self.player.hunger > HUNGER_CAP {
+        } else if self.player.hunger > self.player.thirst_cap {
             return TurnResult::HungerDeath;
         }
 
@@ -180,6 +184,7 @@ impl World {
     pub fn draw(&self, x: u32, y: u32) {
         self.map.draw(x, y);
         self.draw_key();
+        self.draw_inventory(x, y);
 
         for entity in &self.entities {
             entity.draw(x, y);
@@ -189,6 +194,15 @@ impl World {
         cod::color::de_bg();
         cod::pixel(CHARACTER, self.player.x * 2 + x, self.player.y + y);
         cod::color::de_fg();
+    }
+
+    fn draw_inventory(&self, x: u32, mut y: u32) {
+        cod::color::de();
+        let x = x + (WIDTH as u32 * 2) + 2;
+        for item in &self.player.inventory {
+            cod::blit(item.name, x, y);
+            y += 1;
+        }
     }
 
     fn draw_key(&self) {
@@ -238,16 +252,16 @@ impl World {
         cod::color::fg(7);
         print!("Damage: {:2}  ", self.player.damage);
 
-        let food = HUNGER_CAP.saturating_sub(self.player.hunger);
+        let food = self.player.hunger_cap.saturating_sub(self.player.hunger);
         if food <= 3 {
             cod::color::fg(1);
         } else {
             cod::color::fg(223);
         }
 
-        print!("Hunger: {:2}  ", HUNGER_CAP - self.player.hunger);
+        print!("Hunger: {:2}  ", food);
 
-        let water = THIRST_CAP.saturating_sub(self.player.thirst);
+        let water = self.player.thirst_cap.saturating_sub(self.player.thirst);
         if water <= 1 {
             cod::color::fg(1);
         } else {

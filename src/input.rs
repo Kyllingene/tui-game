@@ -29,6 +29,7 @@ pub enum TurnResult {
     WonFight(bool),
     DefeatedBoss(u32),
     InvalidMove(Direction),
+    PickedUpItem(&'static str),
     WaterMove,
     Ate(u32),
     HungerDeath,
@@ -51,6 +52,7 @@ impl TurnResult {
             | Self::WonFight(_)
             | Self::DefeatedBoss(_)
             | Self::InvalidMove(_)
+            | Self::PickedUpItem(_)
             | Self::WaterMove
             | Self::Ate(_) => false,
             Self::Quit | Self::HungerDeath | Self::ThirstDeath | Self::ViolentDeath => true,
