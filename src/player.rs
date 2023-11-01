@@ -6,6 +6,7 @@ pub mod constants {
     pub const THIRST_CAP: u32 = 10;
 
     pub const UPGRADE_CHANCE: f32 = 0.4;
+    pub const CHARACTER: char = 'G';
 }
 
 #[derive(Debug, Default, Clone, Copy, PartialEq, Eq, Hash)]
@@ -19,3 +20,4 @@ pub struct Player {
     pub health: u32,
     pub damage: u32,
 }
+

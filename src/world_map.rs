@@ -6,7 +6,7 @@ use crate::sector::Sector;
 use crate::entity::{Entity, EntityKind};
 use crate::map::{Tile, TileKind, Direction};
 
-pub const START: &'static str = "start";
+pub const START: &str = "start";
 
 pub fn sectors() -> HashMap<&'static str, Sector> {
     hash_map! {

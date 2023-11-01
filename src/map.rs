@@ -117,7 +117,7 @@ impl Map {
             cod::color::de_fg();
             print!("|");
         }
-        println!("\n{}+", "-".repeat(WIDTH * 2));
+        println!("\n{}/", "-".repeat(WIDTH * 2));
     }
 }
 

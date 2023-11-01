@@ -20,7 +20,6 @@ impl World {
     pub fn new(player_x: u32, player_y: u32) -> Self {
         let (entities, map) = Map::new(sectors(), START);
         Self {
-            // map: Map::parse(map),
             map,
             player: Player {
                 x: player_x,
@@ -47,7 +46,7 @@ impl World {
         cod::goto::pos(0, HEIGHT as u32);
         //cod::clear::line();
         cod::color::de();
-        print!("{}+  ", "-".repeat(WIDTH * 2));
+        print!("{}/  ", "-".repeat(WIDTH * 2));
 
         cod::goto::pos(1, HEIGHT as u32);
         cod::color::fg(color);
@@ -102,12 +101,18 @@ impl World {
             self.player.hunger += 1;
         }
 
-        if self.turn % THIRST_INTERVAL == 0 {
+        if self.turn % THIRST_INTERVAL == 0 && self.player.thirst <= THIRST_CAP {
             self.player.thirst += 1;
         }
 
         if self.player.thirst > THIRST_CAP {
-            return TurnResult::ThirstDeath;
+            self.player.health = self.player.health.saturating_sub(1);
+            if self.player.health == 0 {
+                return TurnResult::ThirstDeath;
+            }
+
+            self.draw_message("You took 1 damage from thirst!", 1);
+
         } else if self.player.hunger > HUNGER_CAP {
             return TurnResult::HungerDeath;
         }
@@ -183,7 +188,7 @@ impl World {
 
         cod::color::fg(140);
         cod::color::de_bg();
-        cod::pixel('&', self.player.x * 2 + x, self.player.y + y);
+        cod::pixel(CHARACTER, self.player.x * 2 + x, self.player.y + y);
         cod::color::de_fg();
     }
 
@@ -200,7 +205,8 @@ impl World {
             cod::color::tc_fg(r, g, b);
             let (r, g, b) = kind.dark_faded_color();
             cod::color::tc_bg(r, g, b);
-            print!("{kind:?}: {}  ", kind as u8 as char);
+            print!(" {kind:?}: {} ", kind as u8 as char);
+            cod::goto::right(1);
         }
 
         cod::color::de();
@@ -220,17 +226,36 @@ impl World {
         cod::color::fg(140);
         print!("\nPlayer: &  ");
 
-        cod::color::fg(1);
-        print!("Health: {:2}  ", self.player.health);
+        if self.player.health <= 4 {
+            cod::color::fg(0);
+            cod::color::bg(1);
+        } else {
+            cod::color::fg(1);
+        }
+        print!("Health: {:2}", self.player.health);
+        cod::color::de_bg();
+        cod::goto::right(2);
 
         cod::color::fg(7);
         print!("Damage: {:2}  ", self.player.damage);
 
-        cod::color::fg(223);
+        let food = HUNGER_CAP.saturating_sub(self.player.hunger);
+        if food <= 3 {
+            cod::color::fg(1);
+        } else {
+            cod::color::fg(223);
+        }
+
         print!("Hunger: {:2}  ", HUNGER_CAP - self.player.hunger);
 
-        cod::color::fg(12);
-        print!("Thirst: {:2}", THIRST_CAP - self.player.thirst);
+        let water = THIRST_CAP.saturating_sub(self.player.thirst);
+        if water <= 1 {
+            cod::color::fg(1);
+        } else {
+            cod::color::fg(12);
+        }
+
+        print!("Thirst: {:2}", water);
     }
 
     #[allow(dead_code)]

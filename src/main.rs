@@ -6,10 +6,14 @@ mod map;
 mod player;
 mod quip;
 mod sector;
+mod title;
 mod world;
 mod world_map;
 
 fn main() {
+    title::draw(2, 2);
+    cod::read::key();
+
     let mut world = world::World::new(
         12,
         14,
@@ -33,6 +37,6 @@ fn main() {
 
     cod::goto::bot();
     cod::goto::up(1);
-    println!("   Press any key to quit   ");
+    println!("   Press any key to exit   ");
     cod::read::key();
 }

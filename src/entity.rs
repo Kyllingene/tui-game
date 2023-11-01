@@ -128,6 +128,7 @@ impl Entity {
                     self.alive = false;
                     TurnResult::WonFight(false)
                 } else if *damage >= player.health {
+                    player.health = 0;
                     TurnResult::ViolentDeath
                 } else {
                     *health -= player.damage;
@@ -156,6 +157,7 @@ impl Entity {
                     map.set(x, y, *tile);
                     TurnResult::DefeatedBoss(*id)
                 } else if *damage >= player.health {
+                    player.health = 0;
                     TurnResult::ViolentDeath
                 } else {
                     *health -= player.damage;
@@ -242,10 +244,9 @@ impl Entity {
     pub fn draw(&self, x: u32, y: u32) {
         let x = self.x * 2 + x + 1;
 
-        cod::color::de_bg();
         match self.kind {
             EntityKind::Boss { .. } => cod::color::bg(9),
-            _ => {}
+            _ => cod::color::de_bg(),
         }
 
         cod::color::fg(self.kind.color());

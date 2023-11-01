@@ -86,6 +86,7 @@ impl Sector {
         &self.entities
     }
 
+    #[allow(dead_code)]
     pub fn entities_mut(&mut self) -> &mut [Entity] {
         &mut self.entities
     }
@@ -94,6 +95,7 @@ impl Sector {
         self.entities = entities;
     }
 
+    #[allow(dead_code)]
     pub fn add_neighbor(&mut self, direction: Direction, neighbor: &'static str) {
         self.neighbors[direction as usize] = Some(neighbor);
     }
