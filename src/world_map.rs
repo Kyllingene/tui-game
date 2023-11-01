@@ -10,6 +10,9 @@ use crate::item::{Item, Buff};
 pub const START: &str = "start";
 
 pub fn sectors() -> HashMap<&'static str, Sector> {
+    let mut item_id_counter = 0;
+    let mut item_id = move || { item_id_counter += 1; item_id_counter };
+
     hash_map! {
         START => Sector::new(r#"
                 ~~~~~~~~~~~~~~~~~~~~~~~~
@@ -139,7 +142,7 @@ pub fn sectors() -> HashMap<&'static str, Sector> {
             "plains3",
             vec![
                 Entity::new(4, 11,
-                    EntityKind::Item(Item::basic("Sword", Buff::Damage(2))),
+                    EntityKind::Item(Item::basic("Sword", item_id(), Buff::Damage(2))),
                     true,
                 ),
             ],

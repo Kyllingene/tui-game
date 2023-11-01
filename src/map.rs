@@ -1,5 +1,6 @@
 use std::collections::HashMap;
 
+use serde::{Serialize, Deserialize};
 use rand::distributions::{Distribution, Standard, Uniform};
 use rand::Rng;
 
@@ -47,7 +48,7 @@ pub struct Map {
 }
 
 impl Map {
-    pub fn new(sectors: HashMap<&'static str, Sector>, start: &'static str) -> (Vec<Entity>, Self) {
+    pub fn new(sectors: HashMap<&'static str, Sector>, start: &str) -> (Vec<Entity>, Self) {
         let current_sector = sectors
             .get(start)
             .expect("Tried to initialize map with invalid start sector")
@@ -61,7 +62,7 @@ impl Map {
         )
     }
 
-    pub fn load(&mut self, id: &'static str) -> Vec<Entity> {
+    pub fn load(&mut self, id: &str) -> Vec<Entity> {
         self.current_sector = self
             .sectors
             .get(id)
@@ -89,6 +90,10 @@ impl Map {
 
     pub fn tiles(&self) -> &[[Tile; WIDTH]; HEIGHT] {
         self.sector().tiles()
+    }
+
+    pub fn get_sector_mut(&mut self, id: &str) -> Option<&mut Sector> {
+        self.sectors.get_mut(id)
     }
 
     pub fn get(&self, x: u32, y: u32) -> Option<Tile> {
@@ -123,7 +128,7 @@ impl Map {
     }
 }
 
-#[derive(Debug, Default, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Debug, Default, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[repr(u8)]
 pub enum TileKind {
     #[default]
@@ -174,7 +179,7 @@ impl TileKind {
     }
 }
 
-#[derive(Debug, Default, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Debug, Default, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct Tile {
     pub kind: TileKind,
 }

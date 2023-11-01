@@ -177,7 +177,7 @@ impl Entity {
             EntityKind::Item(item) => {
                 self.alive = false;
                 item.apply(player);
-                let name = item.name;
+                let name = item.name.clone();
                 player.inventory.push(std::mem::take(item));
 
                 TurnResult::PickedUpItem(name)
@@ -255,6 +255,14 @@ impl Entity {
         self.y = y;
 
         (x, y)
+    }
+
+    pub fn id(&self) -> Option<u32> {
+        Some(match &self.kind {
+            EntityKind::Boss { id: my_id, .. } => *my_id,
+            EntityKind::Item(item) => item.id,
+            _ => None?,
+        })
     }
 
     pub fn draw(&self, x: u32, y: u32) {

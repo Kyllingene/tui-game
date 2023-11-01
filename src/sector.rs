@@ -10,6 +10,7 @@ pub struct Sector {
     tiles: [[Tile; WIDTH]; HEIGHT],
     entities: Vec<Entity>,
     neighbors: [Option<&'static str>; 4],
+    changed: Vec<(u32, u32)>,
 }
 
 impl Sector {
@@ -79,6 +80,7 @@ impl Sector {
             tiles,
             entities,
             neighbors,
+            changed: Vec::new(),
         }
     }
 
@@ -93,6 +95,14 @@ impl Sector {
 
     pub fn save_entities(&mut self, entities: Vec<Entity>) {
         self.entities = entities;
+    }
+
+    pub fn despawn(&mut self, id: u32) {
+        self.entities.remove(id as usize);
+    }
+
+    pub fn changed(&self) -> &[(u32, u32)] {
+        &self.changed
     }
 
     #[allow(dead_code)]
@@ -116,12 +126,13 @@ impl Sector {
     }
 
     pub fn set(&mut self, x: u32, y: u32, tile: Tile) {
-        let x = x as usize;
-        let y = y as usize;
+        let ix = x as usize;
+        let iy = y as usize;
 
-        if x >= WIDTH || y >= HEIGHT {
+        if ix >= WIDTH || iy >= HEIGHT {
             panic!("({x}, {y}) out of bounds ({WIDTH}, {HEIGHT})")
         }
-        self.tiles[y][x] = tile;
+        self.tiles[iy][ix] = tile;
+        self.changed.push((x, y));
     }
 }

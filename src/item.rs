@@ -1,15 +1,18 @@
+use serde::{Serialize, Deserialize};
+
 use crate::player::Player;
 
-#[derive(Debug, Default, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Default, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct Item {
-    pub name: &'static str,
+    pub name: String,
     pub buffs: Vec<Buff>,
     pub debuffs: Vec<Buff>,
+    pub id: u32,
 }
 
 impl Item {
-    pub fn basic(name: &'static str, buff: Buff) -> Self {
-        Self { name, buffs: vec![buff], debuffs: Vec::new() }
+    pub fn basic(name: &str, id: u32, buff: Buff) -> Self {
+        Self { name: name.to_string(), buffs: vec![buff], debuffs: Vec::new(), id }
     }
 
     pub fn apply(&self, player: &mut Player) {
@@ -18,7 +21,7 @@ impl Item {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum Buff {
     MaxHealth(u32),
     Damage(u32),

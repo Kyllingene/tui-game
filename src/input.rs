@@ -4,6 +4,8 @@ use cod::Key;
 
 use crate::map::Direction;
 use crate::world::World;
+use crate::save;
+
 pub fn handle(world: &mut World) -> TurnResult {
     if let Some(key) = cod::read::key() {
         match key {
@@ -13,6 +15,16 @@ pub fn handle(world: &mut World) -> TurnResult {
             Key::ArrowRight => world.go(Direction::Right),
             Key::Char('q') | Key::Char('\x04') => TurnResult::Quit,
             Key::Char(' ') => world.interact(),
+            Key::Char('s') => {
+                world.draw_message("Saving game", 3);
+                save::save(world);
+                TurnResult::Saved
+            }
+            Key::Char('l') => {
+                world.draw_message("Loading game", 3);
+                save::load(world);
+                TurnResult::Loaded
+            }
             _ => TurnResult::InvalidKey(key),
         }
     } else {
@@ -29,7 +41,9 @@ pub enum TurnResult {
     WonFight(bool),
     DefeatedBoss(u32),
     InvalidMove(Direction),
-    PickedUpItem(&'static str),
+    PickedUpItem(String),
+    Saved,
+    Loaded,
     WaterMove,
     Ate(u32),
     HungerDeath,
@@ -54,6 +68,8 @@ impl TurnResult {
             | Self::InvalidMove(_)
             | Self::PickedUpItem(_)
             | Self::WaterMove
+            | Self::Saved
+            | Self::Loaded
             | Self::Ate(_) => false,
             Self::Quit | Self::HungerDeath | Self::ThirstDeath | Self::ViolentDeath => true,
         }

@@ -1,3 +1,5 @@
+use serde::{Serialize, Deserialize};
+
 use crate::item::Item;
 
 pub mod constants {
@@ -11,7 +13,7 @@ pub mod constants {
     pub const CHARACTER: char = 'G';
 }
 
-#[derive(Debug, Default, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Default, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct Player {
     pub x: u32,
     pub y: u32,

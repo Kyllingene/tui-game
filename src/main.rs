@@ -6,6 +6,7 @@ mod item;
 mod map;
 mod player;
 mod quip;
+mod save;
 mod sector;
 mod title;
 mod world;

@@ -13,6 +13,7 @@ pub struct World {
     pub map: Map,
     pub player: Player,
     pub entities: Vec<Entity>,
+    pub despawned: Vec<(&'static str, u32)>,
     pub turn: u32,
 }
 
@@ -34,7 +35,15 @@ impl World {
                 inventory: Vec::new(),
             },
             entities,
+            despawned: Vec::new(),
             turn: 0,
+        }
+    }
+
+    pub fn despawn(&mut self, i: usize) {
+        let entity = self.entities.remove(i);
+        if let Some(id) = entity.id() {
+            self.despawned.push((self.map.sector().id, id));
         }
     }
 
@@ -85,6 +94,12 @@ impl World {
             }
             TurnResult::Ate(food) => {
                 self.draw_message(format!("You ate {food} food and healed 2"), 2)
+            }
+            TurnResult::Saved => {
+                self.draw_message("Saved!", 2);
+            }
+            TurnResult::Loaded => {
+                self.draw_message("Loaded!", 2);
             }
             _ => {}
         }
@@ -200,7 +215,7 @@ impl World {
         cod::color::de();
         let x = x + (WIDTH as u32 * 2) + 2;
         for item in &self.player.inventory {
-            cod::blit(item.name, x, y);
+            cod::blit(&item.name, x, y);
             y += 1;
         }
     }
@@ -228,7 +243,7 @@ impl World {
         print!("\nFood: +  ");
 
         cod::color::fg(210);
-        print!("Enemy: +  ");
+        print!("Enemy: !  ");
 
         cod::color::fg(136);
         cod::color::bg(9);
