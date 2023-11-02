@@ -7,13 +7,16 @@ use crate::sector::Sector;
 
 macro_rules! sector {
     ( $sectors:expr, $id:expr => $neighbors:expr, $entities:expr $(,)? ) => {
-        $sectors.insert($id, Sector::new(
-            include_str!(concat!("../map/", $id, ".txt")),
+        $sectors.insert(
             $id,
-            $entities,
-            $neighbors,
-        ))
-    }
+            Sector::new(
+                include_str!(concat!("../map/", $id, ".txt")),
+                $id,
+                $entities,
+                $neighbors,
+            ),
+        )
+    };
 }
 
 pub fn sectors() -> HashMap<&'static str, Sector> {

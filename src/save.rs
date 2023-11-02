@@ -56,18 +56,17 @@ impl SaveData {
         world.player = self.player;
 
         for (sector, changes) in self.tile_changes {
-            world.map.get_sector_mut(&sector).map(|sector| {
+            if let Some(sector) = world.map.get_sector_mut(&sector) {
                 for (x, y, tile) in changes {
                     sector.set(x, y, tile);
                 }
-            });
+            }
         }
 
         for (sector, id) in self.despawned {
-            world
-                .map
-                .get_sector_mut(&sector)
-                .map(|sector| sector.despawn(id));
+            if let Some(sector) = world.map.get_sector_mut(&sector) {
+                sector.despawn(id);
+            }
         }
     }
 }
