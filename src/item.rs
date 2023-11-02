@@ -1,4 +1,4 @@
-use serde::{Serialize, Deserialize};
+use serde::{Deserialize, Serialize};
 
 use crate::player::Player;
 
@@ -12,12 +12,21 @@ pub struct Item {
 
 impl Item {
     pub fn basic(name: &str, id: u32, buff: Buff) -> Self {
-        Self { name: name.to_string(), buffs: vec![buff], debuffs: Vec::new(), id }
+        Self {
+            name: name.to_string(),
+            buffs: vec![buff],
+            debuffs: Vec::new(),
+            id,
+        }
     }
 
     pub fn apply(&self, player: &mut Player) {
-        for buff in &self.buffs { buff.apply(player, false); }
-        for debuff in &self.debuffs { debuff.apply(player, true); }
+        for buff in &self.buffs {
+            buff.apply(player, false);
+        }
+        for debuff in &self.debuffs {
+            debuff.apply(player, true);
+        }
     }
 }
 
@@ -38,8 +47,11 @@ impl Buff {
             Self::HungerCap(i) => (&mut player.hunger_cap, i),
         };
 
-        let diff = if debuff { -(*diff as i32) } else { *diff as i32 };
+        let diff = if debuff {
+            -(*diff as i32)
+        } else {
+            *diff as i32
+        };
         *stat = stat.saturating_add_signed(diff);
     }
 }
-

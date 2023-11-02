@@ -3,8 +3,8 @@ use std::ops::ControlFlow;
 use cod::Key;
 
 use crate::map::Direction;
-use crate::world::World;
 use crate::save;
+use crate::world::World;
 
 pub fn handle(world: &mut World) -> TurnResult {
     if let Some(key) = cod::read::key() {
@@ -17,13 +17,19 @@ pub fn handle(world: &mut World) -> TurnResult {
             Key::Char(' ') => world.interact(),
             Key::Char('s') => {
                 world.draw_message("Saving game", 3);
-                save::save(world);
-                TurnResult::Saved
+                if save::save(world) {
+                    TurnResult::Saved
+                } else {
+                    TurnResult::Ok
+                }
             }
             Key::Char('l') => {
                 world.draw_message("Loading game", 3);
-                save::load(world);
-                TurnResult::Loaded
+                if save::load(world) {
+                    TurnResult::Loaded
+                } else {
+                    TurnResult::Ok
+                }
             }
             _ => TurnResult::InvalidKey(key),
         }

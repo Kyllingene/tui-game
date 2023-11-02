@@ -1,8 +1,8 @@
 use std::collections::HashMap;
 
-use serde::{Serialize, Deserialize};
 use rand::distributions::{Distribution, Standard, Uniform};
 use rand::Rng;
+use serde::{Deserialize, Serialize};
 
 use crate::entity::Entity;
 use crate::sector::Sector;

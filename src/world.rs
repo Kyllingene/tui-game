@@ -28,7 +28,7 @@ impl World {
                 hunger: 0,
                 thirst: 0,
                 hunger_cap: INITIAL_HUNGER_CAP,
-                thirst_cap: INITIAL_THIRST_CAP, 
+                thirst_cap: INITIAL_THIRST_CAP,
                 health: 10,
                 max_health: 10,
                 damage: 1,
@@ -139,7 +139,10 @@ impl World {
         let mut entities = self.entities.clone();
         for (i, entity) in entities.iter_mut().enumerate() {
             let r = entity.ai(self)?;
-            if r != TurnResult::Ok { res = r; self.draw_result(res); }
+            if r != TurnResult::Ok {
+                res = r;
+                self.draw_result(res);
+            }
             self.draw(0, 0);
 
             if entity.alive {
@@ -151,7 +154,7 @@ impl World {
         }
 
         for i in kill {
-            entities.remove(i);
+            self.despawn(i);
         }
 
         if let Some(e) = Entity::spawn_random(self) {
@@ -179,7 +182,7 @@ impl World {
             }
 
             if let Some(i) = kill {
-                self.entities.remove(i);
+                self.despawn(i);
             }
         } else {
             self.player.health = (self.player.health + self.turn % 2).min(10);
@@ -354,7 +357,7 @@ impl World {
                 }
 
                 for (i, e) in kill.iter().enumerate() {
-                    self.entities.remove(e - i);
+                    self.despawn(e - i);
                 }
 
                 res

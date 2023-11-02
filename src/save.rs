@@ -1,13 +1,15 @@
-use std::path::Path;
-use std::fs::{File, OpenOptions};
-use std::io::{Write, BufReader};
 use std::collections::HashMap;
+use std::fs::{self, File, OpenOptions};
+use std::io::{BufReader, BufWriter, Write};
+use std::path::{Path, PathBuf};
 
-use serde::{Serialize, Deserialize};
+use serde::{Deserialize, Serialize};
+use zstd::stream::Decoder;
 
-use crate::world::World;
 use crate::map::Tile;
 use crate::player::Player;
+use crate::sector::HEIGHT;
+use crate::world::World;
 
 #[derive(Serialize, Deserialize)]
 struct SaveData {
@@ -34,7 +36,9 @@ impl SaveData {
             tile_changes.insert(id.to_string(), std::mem::take(&mut tiles));
         }
 
-        let despawned = world.despawned.iter()
+        let despawned = world
+            .despawned
+            .iter()
             .map(|(s, i)| (s.to_string(), *i))
             .collect();
 
@@ -60,40 +64,84 @@ impl SaveData {
         }
 
         for (sector, id) in self.despawned {
-            world.map.get_sector_mut(&sector).map(|sector| sector.despawn(id));
+            world
+                .map
+                .get_sector_mut(&sector)
+                .map(|sector| sector.despawn(id));
         }
     }
 }
 
-pub fn save_to<S: AsRef<Path>>(file: S, world: &World) {
+pub fn save_to<S: AsRef<Path>>(file: S, world: &World) -> bool {
     let data = SaveData::from(world);
-    
+
     let json = serde_json::to_string(&data).expect("Failed to serialize save data");
 
-    let mut file = OpenOptions::new()
+    let Ok(file) = OpenOptions::new()
         .write(true)
         .create(true)
         .truncate(true)
         .open(file)
-        .expect("Failed to open save file");
+    else {
+        world.draw_message("Save not found", 1);
+        cod::read::key();
+        return false;
+    };
+    let mut file = BufWriter::new(file);
+    zstd::stream::copy_encode(json.as_bytes(), &mut file, 0).expect("Failed to write to save file");
 
-    file.write_all(json.as_bytes()).expect("Failed to write to save file");
     file.flush().expect("Failed to write to save file");
+    true
 }
 
-// TODO: use a better save location
-// TODO: use zstd
-pub fn save(world: &World) {
-    save_to("frob-save.json", world);
+pub fn save(world: &World) -> bool {
+    if let Some(slot) = get_slot_no() {
+        let mut dir = dirs::data_dir().unwrap_or_else(|| PathBuf::from("./"));
+        dir.push("frob-adventure");
+        fs::create_dir_all(&dir).expect("Failed to create save directory");
+        dir.push(format!("frob-save-{slot}.json.zst"));
+        save_to(dir, world)
+    } else {
+        world.draw_message("Invalid save slot", 1);
+        cod::read::key();
+        false
+    }
 }
 
-pub fn load_from<S: AsRef<Path>>(file: S, world: &mut World) {
-    let file = BufReader::new(File::open(file).expect("Failed to open save file"));
-    let data: SaveData = serde_json::from_reader(file).expect("Failed to parse save file");
+fn get_slot_no() -> Option<u32> {
+    cod::goto::pos(0, HEIGHT as u32);
+    cod::clear::line();
+    cod::color::de_bg();
+    cod::color::fg(2);
+    print!("Save slot: ");
+    cod::color::de_fg();
+    cod::flush();
+    cod::read::line().and_then(|l| l.parse().ok())
+}
+
+pub fn load_from<S: AsRef<Path>>(file: S, world: &mut World) -> bool {
+    let Ok(file) = File::open(file) else {
+        world.draw_message("Save not found", 1);
+        cod::read::key();
+        return false;
+    };
+    let file = BufReader::new(file);
+    let stream = Decoder::new(file).expect("Failed to create decoder");
+    let data: SaveData = serde_json::from_reader(stream).expect("Failed to parse save file");
     data.apply(world);
+    true
 }
 
-pub fn load(world: &mut World) {
-    load_from("frob-save.json", world);
+pub fn load(world: &mut World) -> bool {
+    if let Some(slot) = get_slot_no() {
+        let mut dir = dirs::data_dir().unwrap_or_else(|| PathBuf::from("./"));
+        dir.push("frob-adventure");
+        fs::create_dir_all(&dir).expect("Failed to create save directory");
+        dir.push(format!("frob-save-{slot}.json.zst"));
+        load_from(dir, world)
+    } else {
+        world.draw_message("Invalid save slot", 1);
+        cod::read::key();
+        false
+    }
 }
-

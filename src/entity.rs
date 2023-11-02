@@ -3,10 +3,10 @@ use std::ops::Range;
 use rand::{thread_rng, Rng};
 
 use crate::input::TurnResult;
+use crate::item::Item;
 use crate::map::{Direction, Map, Tile, TileKind, HEIGHT, WIDTH};
 use crate::player::Player;
 use crate::world::World;
-use crate::item::Item;
 
 const FOOD_MOVE_CHANCE: f32 = 0.55;
 const ENEMY_MOVE_CHANCE: f32 = 0.60;

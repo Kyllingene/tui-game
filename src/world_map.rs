@@ -3,15 +3,18 @@ use std::collections::HashMap;
 use map_macro::hash_map;
 
 use crate::entity::{Entity, EntityKind};
+use crate::item::{Buff, Item};
 use crate::map::{Direction, Tile, TileKind};
 use crate::sector::Sector;
-use crate::item::{Item, Buff};
 
 pub const START: &str = "start";
 
 pub fn sectors() -> HashMap<&'static str, Sector> {
     let mut item_id_counter = 0;
-    let mut item_id = move || { item_id_counter += 1; item_id_counter };
+    let mut item_id = move || {
+        item_id_counter += 1;
+        item_id_counter
+    };
 
     hash_map! {
         START => Sector::new(r#"
