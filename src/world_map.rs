@@ -1,176 +1,92 @@
 use std::collections::HashMap;
 
-use map_macro::hash_map;
-
 use crate::entity::{Entity, EntityKind};
 use crate::map::{Direction, Tile, TileKind};
 use crate::sector::Sector;
 use crate::item::{Item, Buff};
 
-pub const START: &str = "start";
+macro_rules! sector {
+    ( $sectors:expr, $id:expr => $neighbors:expr, $entities:expr $(,)? ) => {
+        $sectors.insert($id, Sector::new(
+            include_str!(concat!("../map/", $id, ".txt")),
+            $id,
+            $entities,
+            $neighbors,
+        ))
+    }
+}
 
 pub fn sectors() -> HashMap<&'static str, Sector> {
     let mut item_id_counter = 0;
     let mut item_id = move || { item_id_counter += 1; item_id_counter };
 
-    hash_map! {
-        START => Sector::new(r#"
-                ~~~~~~~~~~~~~~~~~~~~~~~~
-                ~~________~~~~~~~$nn$~~~
-                ~____$$_$_____~~$$$nn$~~
-                ~__$$$$$n$$$___~$$$An$~~
-                ~~~~~$$$$$n$$_~~$$nn$_~~
-                ~~~~~~~$$$$$$__~~nA$$_~~
-                ~__~~~~A$$$$$__~~nn$$_~~
-                __$_____~~~____~~$n$_~~~
-                __$_____~~~~~~~~$nn$$_~~
-                ~__nA$_________~$nA$$_~~
-                ~____nnnnA_____~nn$$$$~~
-                ~~____$$nn$__n__A$$$n$~~
-                ~~~_____________$A$n$$~~
-                ~~~___________~~~~~$$ ~~
-                ~~~~~________~~~~~~~~~~~
-                ~~~~~~~~~~~~~~~~~~~~~~~~
-            "#,
-            START,
-            vec![
-                Entity::new(
-                    7,
-                    7,
-                    EntityKind::Boss {
-                        health: 15,
-                        damage: 3,
-                        damage_gain: 2,
-                        id: 0,
-                        block: (
-                            Direction::Up,
-                            Tile {
-                                kind: TileKind::Grass,
-                            },
-                        ),
-                    },
-                    true,
-                ),
-                Entity::new(
-                    16,
-                    12,
-                    EntityKind::Boss {
-                        health: 30,
-                        damage: 5,
-                        damage_gain: 2,
-                        id: 1,
-                        block: (
-                            Direction::Right,
-                            Tile {
-                                kind: TileKind::Forest,
-                            },
-                        ),
-                    },
-                    true,
-                ),
-            ],
-            [None, None, Some("plains1"), None]
-        ),
+    let mut sectors = HashMap::new();
 
-        "plains1" => Sector::new(
-            r#"
-                _________________~~~~~~~
-                ________________~~~~~~~~
-                ____________________~~~~
-                ______________________~~
-                _______________$______~~
-                _______________________~
-                ___n___________________~
-                ________________________
-                ________________________
-                _______________________~
-                _______________________~
-                _______________________~
-                ________$$_____________~
-                _______________________~
-                _______________________~
-                ______________________~~
-            "#,
-            "plains1",
-            vec![],
-            [Some("plains4"), Some("plains3"), Some("plains2"), Some(START)]
-        ),
+    sector!(
+        sectors, "start" =>
+        [None, None, Some("plains1"), None],
+        vec![
+            Entity::new(
+                7,
+                7,
+                EntityKind::Boss {
+                    health: 15,
+                    damage: 3,
+                    damage_gain: 2,
+                    id: 0,
+                    block: (
+                        Direction::Up,
+                        Tile {
+                            kind: TileKind::Grass,
+                        },
+                    ),
+                },
+                true,
+            ),
+            Entity::new(
+                16,
+                12,
+                EntityKind::Boss {
+                    health: 30,
+                    damage: 5,
+                    damage_gain: 2,
+                    id: 1,
+                    block: (
+                        Direction::Right,
+                        Tile {
+                            kind: TileKind::Forest,
+                        },
+                    ),
+                },
+                true,
+            ),
+        ],
+    );
 
-        "plains2" => Sector::new(
-            r#"
-                AAAAnnnn$_______________
-                AAAnnn$$________________
-                AAnn$$$_________________
-                AAnn$$$_________________
-                AAnn$$$_________________
-                Ann$____________________
-                nn$$$___________________
-                $$__________________$___
-                ________________________
-                ________$_______________
-                ________________________
-                ________________________
-                ________________________
-                ________________________
-                _________________n______
-                ________________________
-            "#,
-            "plains2",
-            vec![],
-            [None, None, None, Some("plains1")]
-        ),
+    sector!(sectors, "plains1" =>
+        [Some("plains4"), Some("plains3"), Some("plains2"), Some("start")],
+        vec![],
+    );
 
-        "plains3" => Sector::new(
-            r#"
-                ______________________~~
-                __________n____________~
-                ________________________
-                ________________________
-                ________________________
-                ________________________
-                ________________________
-                ________________________
-                ________________________
-                $$____$_________________
-                $$$________________$____
-                $$$$____________________
-                $$$$$$__________________
-                $$$n$$$$________________
-                $$$$$$$$$$$$____________
-                $n$$$$$$$$$$$$$_________
-            "#,
-            "plains3",
-            vec![
-                Entity::new(4, 11,
-                    EntityKind::Item(Item::basic("Sword", item_id(), Buff::Damage(2))),
-                    true,
-                ),
-            ],
-            [Some("plains1"), None, None, None]
-        ),
+    sector!(sectors, "plains2" =>
+        [None, None, None, Some("plains1")],
+        vec![],
+    );
 
-        "plains4" => Sector::new(
-            r#"
-                ________________________
-                ________________________
-                ________________________
-                ________________________
-                ________________________
-                _______~~~~$$$$$$_______
-                _____~~~~~~~$$$_$$_$____
-                ______~~~~~~~$__$$______
-                _______~~~~~$$$______n__
-                ____________~~~____$____
-                _______________~________
-                ________________~_______
-                _________________~~_____
-                ___________________~__~~
-                __________________~~~~~~
-                _________________~~~~~~~
-            "#,
-            "plains4",
-            vec![],
-            [None, Some("plains1"), None, None]
-        ),
-    }
+    sector!(sectors, "plains3" =>
+        [Some("plains1"), None, None, None],
+        vec![
+            Entity::new(4, 11,
+                EntityKind::Item(Item::basic("Sword", item_id(), Buff::Damage(2))),
+                true,
+            ),
+        ],
+    );
+
+    sector!(sectors, "plains4" =>
+        [None, Some("plains1"), None, None],
+        vec![],
+    );
+
+    sectors
 }
