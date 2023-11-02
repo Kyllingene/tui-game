@@ -10,7 +10,6 @@ description = "A hobby retro-style TUI game."
 [dependencies]
 cod = { version = "6.1", features = ["input"] }
 dirs = "5.0.1"
-map-macro = "0.2.6"
 rand = "0.8"
 serde = { version = "1.0.190", features = ["derive"] }
 serde_json = "1.0.108"

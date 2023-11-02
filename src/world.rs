@@ -6,7 +6,7 @@ use crate::entity::{Entity, EntityKind};
 use crate::input::{self, TurnResult};
 use crate::map::{Direction, Map, TileKind, HEIGHT, WIDTH};
 use crate::player::{constants::*, Player};
-use crate::world_map::{sectors, START};
+use crate::world_map::sectors;
 
 #[derive(Debug)]
 pub struct World {
@@ -19,7 +19,7 @@ pub struct World {
 
 impl World {
     pub fn new(player_x: u32, player_y: u32) -> Self {
-        let (entities, map) = Map::new(sectors(), START);
+        let (entities, map) = Map::new(sectors(), "start");
         Self {
             map,
             player: Player {
