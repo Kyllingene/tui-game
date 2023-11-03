@@ -47,6 +47,14 @@ impl World {
         }
     }
 
+    pub fn despawn_id(&mut self, id: u32) {
+        if let Some((i, _)) = self.entities.iter()
+            .enumerate()
+            .find(|(_, e)| e.id() == Some(id)) {
+            self.despawn(i);
+        }
+    }
+
     pub fn max_entities(&self) -> u32 {
         (4 + self.turn / 20).min((WIDTH * HEIGHT) as u32 / 6)
     }
@@ -153,8 +161,8 @@ impl World {
             }
         }
 
-        for i in kill {
-            self.despawn(i);
+        for (o, i) in kill.into_iter().enumerate() {
+            self.despawn(i - o);
         }
 
         if let Some(e) = Entity::spawn_random(self) {
@@ -185,7 +193,7 @@ impl World {
                 self.despawn(i);
             }
         } else {
-            self.player.health = (self.player.health + self.turn % 2).min(10);
+            self.player.health = (self.player.health + self.turn % 2).min(self.player.max_health);
         }
 
         if matches!(res, TurnResult::WonFight(_)) {

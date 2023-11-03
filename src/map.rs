@@ -44,7 +44,6 @@ impl Distribution<Direction> for Standard {
 pub struct Map {
     pub sectors: HashMap<&'static str, Sector>,
     pub current_sector: Sector,
-    //pub current_sector: &'static str,
 }
 
 impl Map {
@@ -63,13 +62,22 @@ impl Map {
     }
 
     pub fn load(&mut self, id: &str) -> Vec<Entity> {
-        self.current_sector = self
+        let new_sector = self
             .sectors
             .get(id)
             .expect("Found invalid sector identifier")
             .clone();
+        let old_sector = std::mem::replace(&mut self.current_sector, new_sector);
+        self.sectors.insert(old_sector.id, old_sector);
 
         self.current_sector.entities().to_vec()
+    }
+
+    pub fn const_id(&self, id: &str) -> &'static str {
+        self.sectors
+            .get(id)
+            .expect("Found invalid sector identifier")
+            .id
     }
 
     pub fn save_entities(&mut self, id: &str, entities: Vec<Entity>) {
@@ -92,8 +100,20 @@ impl Map {
         self.sector().tiles()
     }
 
+    pub fn get_sector(&self, id: &str) -> Option<&Sector> {
+        if id == self.current_sector.id {
+            Some(&self.current_sector)
+        } else {
+            self.sectors.get(id)
+        }
+    }
+
     pub fn get_sector_mut(&mut self, id: &str) -> Option<&mut Sector> {
-        self.sectors.get_mut(id)
+        if id == self.current_sector.id {
+            Some(&mut self.current_sector)
+        } else {
+            self.sectors.get_mut(id)
+        }
     }
 
     pub fn get(&self, x: u32, y: u32) -> Option<Tile> {
@@ -133,6 +153,7 @@ impl Map {
 pub enum TileKind {
     #[default]
     Water = b'~',
+    Road = b'=',
     Grass = b'_',
     Forest = b'$',
     Hill = b'n',
@@ -143,6 +164,7 @@ impl TileKind {
     pub fn color(&self) -> (u8, u8, u8) {
         match self {
             Self::Water => (0, 77, 153),
+            Self::Road => (158, 158, 158),
             Self::Grass => (0, 153, 25),
             Self::Forest => (0, 77, 38),
             Self::Hill => (255, 238, 230),

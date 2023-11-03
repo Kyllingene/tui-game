@@ -20,10 +20,10 @@ macro_rules! sector {
 }
 
 pub fn sectors() -> HashMap<&'static str, Sector> {
-    let mut item_id_counter = 0;
-    let mut item_id = move || {
-        item_id_counter += 1;
-        item_id_counter
+    let mut entity_id_counter = 0;
+    let mut entity_id = move || {
+        entity_id_counter += 1;
+        entity_id_counter
     };
 
     let mut sectors = HashMap::new();
@@ -39,7 +39,7 @@ pub fn sectors() -> HashMap<&'static str, Sector> {
                     health: 15,
                     damage: 3,
                     damage_gain: 2,
-                    id: 0,
+                    id: entity_id(),
                     block: (
                         Direction::Up,
                         Tile {
@@ -56,7 +56,7 @@ pub fn sectors() -> HashMap<&'static str, Sector> {
                     health: 30,
                     damage: 5,
                     damage_gain: 2,
-                    id: 1,
+                    id: entity_id(),
                     block: (
                         Direction::Right,
                         Tile {
@@ -75,7 +75,7 @@ pub fn sectors() -> HashMap<&'static str, Sector> {
     );
 
     sector!(sectors, "plains2" =>
-        [None, None, None, Some("plains1")],
+        [None, None, Some("mountains1"), Some("plains1")],
         vec![],
     );
 
@@ -83,7 +83,7 @@ pub fn sectors() -> HashMap<&'static str, Sector> {
         [Some("plains1"), None, None, None],
         vec![
             Entity::new(4, 11,
-                EntityKind::Item(Item::basic("Sword", item_id(), Buff::Damage(2))),
+                EntityKind::Item(Item::basic("Sword", entity_id(), Buff::Damage(2))),
                 true,
             ),
         ],
@@ -91,7 +91,26 @@ pub fn sectors() -> HashMap<&'static str, Sector> {
 
     sector!(sectors, "plains4" =>
         [None, Some("plains1"), None, None],
-        vec![],
+        vec![
+            Entity::new(20, 11,
+                EntityKind::Item(Item::basic("Chestplate", entity_id(), Buff::MaxHealth(3))),
+                true,
+            ),
+        ],
+    );
+
+    sector!(sectors, "mountains1" => 
+        [None, None, None, Some("plains2")],
+        vec![
+            Entity::new(3, 6,
+                EntityKind::Item(Item::new("Vial of Fortitude", entity_id(), vec![
+                        Buff::MaxHealth(3),
+                        Buff::HungerCap(2),
+                        Buff::ThirstCap(2),
+                ])),
+                true,
+            ),
+        ]
     );
 
     sectors

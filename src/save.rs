@@ -29,12 +29,23 @@ impl SaveData {
                 let x = *x;
                 let y = *y;
 
-                let tile = world.map.get(x, y).unwrap();
+                let tile = sector.get(x, y).unwrap();
                 tiles.push((x, y, tile));
             }
 
             tile_changes.insert(id.to_string(), std::mem::take(&mut tiles));
         }
+
+        tiles.clear();
+        for (x, y) in world.map.sector().changed() {
+            let x = *x;
+            let y = *y;
+
+            let tile = world.map.get(x, y).unwrap();
+            tiles.push((x, y, tile));
+        }
+
+        tile_changes.insert(world.map.sector().id.to_string(), tiles);
 
         let despawned = world
             .despawned
@@ -52,7 +63,6 @@ impl SaveData {
 
     pub fn apply(self, world: &mut World) {
         world.map.load(&self.current_sector);
-        world.entities.clear();
         world.player = self.player;
 
         for (sector, changes) in self.tile_changes {
@@ -65,9 +75,12 @@ impl SaveData {
 
         for (sector, id) in self.despawned {
             if let Some(sector) = world.map.get_sector_mut(&sector) {
-                sector.despawn(id);
+                sector.despawn_id(id);
+                world.despawned.push((sector.id, id));
             }
         }
+
+        world.entities = world.map.sector().entities().to_vec();
     }
 }
 
@@ -94,20 +107,18 @@ pub fn save_to<S: AsRef<Path>>(file: S, world: &World) -> bool {
 }
 
 pub fn save(world: &World) -> bool {
-    if let Some(slot) = get_slot_no() {
+    if let Some(slot) = get_slot() {
         let mut dir = dirs::data_dir().unwrap_or_else(|| PathBuf::from("./"));
         dir.push("frob-adventure");
         fs::create_dir_all(&dir).expect("Failed to create save directory");
         dir.push(format!("frob-save-{slot}.json.zst"));
         save_to(dir, world)
     } else {
-        world.draw_message("Invalid save slot", 1);
-        cod::read::key();
         false
     }
 }
 
-fn get_slot_no() -> Option<u32> {
+fn get_slot() -> Option<String> {
     cod::goto::pos(0, HEIGHT as u32);
     cod::clear::line();
     cod::color::de_bg();
@@ -115,7 +126,7 @@ fn get_slot_no() -> Option<u32> {
     print!("Save slot: ");
     cod::color::de_fg();
     cod::flush();
-    cod::read::line().and_then(|l| l.parse().ok())
+    cod::read::line()
 }
 
 pub fn load_from<S: AsRef<Path>>(file: S, world: &mut World) -> bool {
@@ -132,15 +143,14 @@ pub fn load_from<S: AsRef<Path>>(file: S, world: &mut World) -> bool {
 }
 
 pub fn load(world: &mut World) -> bool {
-    if let Some(slot) = get_slot_no() {
+    if let Some(slot) = get_slot() {
         let mut dir = dirs::data_dir().unwrap_or_else(|| PathBuf::from("./"));
         dir.push("frob-adventure");
         fs::create_dir_all(&dir).expect("Failed to create save directory");
         dir.push(format!("frob-save-{slot}.json.zst"));
         load_from(dir, world)
     } else {
-        world.draw_message("Invalid save slot", 1);
-        cod::read::key();
-        false
+       cod::read::key();
+       false
     }
 }

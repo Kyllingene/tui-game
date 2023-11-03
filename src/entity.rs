@@ -84,7 +84,7 @@ impl Entity {
                     let tile = world.map.get(x, y).unwrap();
 
                     let chance = match tile.kind {
-                        TileKind::Water | TileKind::Mountain => continue,
+                        TileKind::Water | TileKind::Road | TileKind::Mountain => continue,
                         TileKind::Grass => match kind {
                             EntityKind::Food { .. } => 0.75,
                             EntityKind::Enemy { .. } => 0.15,
@@ -124,7 +124,7 @@ impl Entity {
         match &mut self.kind {
             EntityKind::Food { food } => {
                 player.hunger = player.hunger.saturating_sub(*food);
-                player.health = (player.health + 2).min(10);
+                player.health = (player.health + 2).min(player.max_health);
                 self.alive = false;
 
                 TurnResult::Ate(*food)
@@ -159,8 +159,9 @@ impl Entity {
                     let (dir, tile) = block;
                     let diff = dir.diff();
 
-                    let x = self.x.saturating_add_signed(diff.0);
-                    let y = self.y.saturating_add_signed(diff.1);
+                    // wrapping to allow across-the-map setups
+                    let x = self.x.wrapping_add_signed(diff.0);
+                    let y = self.y.wrapping_add_signed(diff.1);
                     map.set(x, y, *tile);
                     TurnResult::DefeatedBoss(*id)
                 } else if *damage >= player.health {
@@ -259,7 +260,7 @@ impl Entity {
 
     pub fn id(&self) -> Option<u32> {
         Some(match &self.kind {
-            EntityKind::Boss { id: my_id, .. } => *my_id,
+            EntityKind::Boss { id, .. } => *id,
             EntityKind::Item(item) => item.id,
             _ => None?,
         })

@@ -11,6 +11,15 @@ pub struct Item {
 }
 
 impl Item {
+    pub fn new(name: &str, id: u32, buffs: Vec<Buff>) -> Self {
+        Self {
+            name: name.to_string(),
+            buffs,
+            debuffs: Vec::new(),
+            id,
+        }
+    }
+
     pub fn basic(name: &str, id: u32, buff: Buff) -> Self {
         Self {
             name: name.to_string(),

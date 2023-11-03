@@ -35,6 +35,11 @@ impl Sector {
                         kind: TileKind::Grass,
                     }
                 }
+                '=' => {
+                    tiles[y][x] = Tile {
+                        kind: TileKind::Road,
+                    }
+                }
                 '$' => {
                     tiles[y][x] = Tile {
                         kind: TileKind::Forest,
@@ -97,8 +102,16 @@ impl Sector {
         self.entities = entities;
     }
 
-    pub fn despawn(&mut self, id: u32) {
-        self.entities.remove(id as usize);
+    pub fn despawn(&mut self, i: usize) {
+        self.entities.remove(i);
+    }
+
+    pub fn despawn_id(&mut self, id: u32) {
+        if let Some((i, _)) = self.entities.iter()
+            .enumerate()
+            .find(|(_, e)| e.id() == Some(id)) {
+            self.despawn(i);
+        }
     }
 
     pub fn changed(&self) -> &[(u32, u32)] {
@@ -132,6 +145,7 @@ impl Sector {
         if ix >= WIDTH || iy >= HEIGHT {
             panic!("({x}, {y}) out of bounds ({WIDTH}, {HEIGHT})")
         }
+
         self.tiles[iy][ix] = tile;
         self.changed.push((x, y));
     }
