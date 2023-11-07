@@ -4,6 +4,7 @@ use crate::entity::{Entity, EntityKind};
 use crate::item::{Buff, Item};
 use crate::map::{Direction, Tile, TileKind};
 use crate::sector::Sector;
+use crate::difficulty::Difficulty;
 
 macro_rules! sector {
     ( $sectors:expr, $id:expr => $neighbors:expr, $entities:expr $(,)? ) => {
@@ -15,6 +16,18 @@ macro_rules! sector {
                 $entities,
                 $neighbors,
             ),
+        )
+    };
+
+    ( $sectors:expr, $id:expr => $neighbors:expr, $entities:expr, $difficulty:expr $(,)? ) => {
+        $sectors.insert(
+            $id,
+            Sector::new(
+                include_str!(concat!("../map/", $id, ".txt")),
+                $id,
+                $entities,
+                $neighbors,
+            ).with_difficulty($difficulty),
         )
     };
 }
@@ -80,7 +93,7 @@ pub fn sectors() -> HashMap<&'static str, Sector> {
     );
 
     sector!(sectors, "plains3" =>
-        [Some("plains1"), None, None, None],
+        [Some("plains1"), Some("peninsula1"), None, None],
         vec![
             Entity::new(4, 11,
                 EntityKind::Item(Item::basic("Sword", entity_id(), Buff::Damage(2))),
@@ -103,14 +116,31 @@ pub fn sectors() -> HashMap<&'static str, Sector> {
         [None, None, None, Some("plains2")],
         vec![
             Entity::new(3, 6,
-                EntityKind::Item(Item::new("Vial of Fortitude", entity_id(), vec![
+                EntityKind::Item(Item::buffs("Vial of Fortitude", entity_id(), vec![
                         Buff::MaxHealth(3),
                         Buff::HungerCap(2),
                         Buff::ThirstCap(2),
                 ])),
                 true,
             ),
-        ]
+        ],
+    );
+
+    sector!(sectors, "peninsula1" => 
+        [Some("plains3"), None, None, None],
+        vec![
+            Entity::new(17, 14,
+                EntityKind::Item(Item::full("Orc Club", entity_id(), vec![
+                    Buff::Damage(3),
+                    Buff::MaxHealth(2),
+                ], vec![
+                    Buff::HungerCap(2),
+                    Buff::ThirstCap(2),
+                ])),
+                true,
+            ),
+        ],
+        Difficulty::hard()
     );
 
     sectors

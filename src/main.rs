@@ -1,5 +1,6 @@
 #![feature(try_trait_v2)]
 
+mod difficulty;
 mod entity;
 mod input;
 mod item;

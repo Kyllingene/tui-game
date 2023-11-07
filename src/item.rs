@@ -11,7 +11,16 @@ pub struct Item {
 }
 
 impl Item {
-    pub fn new(name: &str, id: u32, buffs: Vec<Buff>) -> Self {
+    pub fn full(name: &str, id: u32, buffs: Vec<Buff>, debuffs: Vec<Buff>) -> Self {
+        Self {
+            name: name.to_string(),
+            buffs,
+            debuffs,
+            id,
+        }
+    }
+
+    pub fn buffs(name: &str, id: u32, buffs: Vec<Buff>) -> Self {
         Self {
             name: name.to_string(),
             buffs,

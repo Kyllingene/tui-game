@@ -1,5 +1,3 @@
-use std::ops::Range;
-
 use rand::{thread_rng, Rng};
 
 use crate::input::TurnResult;
@@ -7,13 +5,14 @@ use crate::item::Item;
 use crate::map::{Direction, Map, Tile, TileKind, HEIGHT, WIDTH};
 use crate::player::Player;
 use crate::world::World;
+use crate::difficulty::DifficultyMul;
 
 const FOOD_MOVE_CHANCE: f32 = 0.55;
 const ENEMY_MOVE_CHANCE: f32 = 0.60;
 
 const SPAWN_CHANCE: f32 = 0.5;
-const FOOD_SPAWN_AREA: Range<f32> = 0.3..1.0;
-const ENEMY_SPAWN_AREA: Range<f32> = 0.0..0.3;
+const FOOD_SPAWN_CHANCE: f32 = 0.6;
+const ENEMY_SPAWN_CHANCE: f32 = 0.4;
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Entity {
@@ -36,6 +35,8 @@ impl Entity {
     }
 
     pub fn spawn_random(world: &World) -> Option<Entity> {
+        let difficulty = world.map.sector().difficulty;
+
         if world.entities.len() >= world.max_entities() as usize {
             return None;
         }
@@ -43,15 +44,17 @@ impl Entity {
         let mut rng = thread_rng();
         let r = rng.gen::<f32>();
         if r <= SPAWN_CHANCE * world.spawn_chance_coeff() {
-            let r = rng.gen();
-            let kind = if FOOD_SPAWN_AREA.contains(&r) {
+            let fsc = FOOD_SPAWN_CHANCE * difficulty.food_mul;
+
+            let r = rng.gen::<f32>() * difficulty.food_mul * difficulty.enemy_mul;
+            let kind = if r <= fsc {
                 EntityKind::Food {
-                    food: rng.gen_range(2..8),
+                    food: rng.gen_range(2..8).apply(difficulty.food_food_mul),
                 }
-            } else if ENEMY_SPAWN_AREA.contains(&r) {
+            } else if r - fsc <= ENEMY_SPAWN_CHANCE * difficulty.enemy_mul {
                 EntityKind::Enemy {
-                    health: rng.gen_range(2..(world.player.damage / 4).max(3)),
-                    damage: rng.gen_range(1..(world.player.health / 3).max(2)),
+                    health: rng.gen_range(2..(world.player.damage / 4).max(3)).apply(difficulty.enemy_health_mul),
+                    damage: rng.gen_range(1..(world.player.health / 3).max(2)).apply(difficulty.enemy_damage_mul),
                 }
             } else {
                 return None;

@@ -1,16 +1,18 @@
 use crate::entity::Entity;
 use crate::map::{Direction, Tile, TileKind};
+use crate::difficulty::Difficulty;
 
 pub const WIDTH: usize = 24;
 pub const HEIGHT: usize = 16;
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, PartialEq, Hash)]
 pub struct Sector {
     pub id: &'static str,
     tiles: [[Tile; WIDTH]; HEIGHT],
     entities: Vec<Entity>,
     neighbors: [Option<&'static str>; 4],
     changed: Vec<(u32, u32)>,
+    pub difficulty: Difficulty,
 }
 
 impl Sector {
@@ -86,6 +88,7 @@ impl Sector {
             entities,
             neighbors,
             changed: Vec::new(),
+            difficulty: Difficulty::normal(),
         }
     }
 
@@ -148,5 +151,10 @@ impl Sector {
 
         self.tiles[iy][ix] = tile;
         self.changed.push((x, y));
+    }
+
+    pub fn with_difficulty(mut self, difficulty: Difficulty) -> Self {
+        self.difficulty = difficulty;
+        self
     }
 }
