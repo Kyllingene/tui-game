@@ -46,6 +46,39 @@ impl Item {
             debuff.apply(player, true);
         }
     }
+
+    pub fn unapply(&self, player: &mut Player) {
+        for buff in &self.buffs {
+            buff.apply(player, true);
+        }
+        for debuff in &self.debuffs {
+            debuff.apply(player, false);
+        }
+    }
+
+    /// Returns the number of lines used by the item.
+    pub fn draw(&self, x: u32, mut y: u32) -> u32 {
+        let oy = y;
+
+        cod::goto::pos(x, y);
+        cod::color::fg(3);
+        cod::color::de_bg();
+        println!("{}", self.name);
+
+        let x = x + 1;
+        y += 1;
+        for buff in &self.buffs {
+            buff.draw(x, y, false);
+            y += 1;
+        }
+
+        for debuff in &self.debuffs {
+            debuff.draw(x, y, true);
+            y += 1;
+        }
+
+        y - oy
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
@@ -71,5 +104,31 @@ impl Buff {
             *diff as i32
         };
         *stat = stat.saturating_add_signed(diff);
+    }
+
+    pub const fn diff(&self) -> u32 {
+        match self {
+            Self::MaxHealth(d)
+                | Self::Damage(d)
+                | Self::ThirstCap(d)
+                | Self::HungerCap(d) => *d
+        }
+    }
+
+    pub fn draw(&self, x: u32, y: u32, debuff: bool) {
+        let (color, name) = match self {
+            Self::MaxHealth(_) => (1, "health"),
+            Self::Damage(_) => (7, "damage"),
+            Self::ThirstCap(_) => (12, "water"),
+            Self::HungerCap(_) => (223, "food"),
+        };
+
+        cod::goto::pos(x, y);
+        cod::color::de_bg();
+        cod::color::fg(color);
+        print!("{name}: ");
+
+        cod::color::fg(if debuff { 1 } else { 2 });
+        print!("{}{}", if debuff { '-' } else { '+' }, self.diff());
     }
 }

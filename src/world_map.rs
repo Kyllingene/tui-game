@@ -80,6 +80,7 @@ pub fn sectors() -> HashMap<&'static str, Sector> {
                 true,
             ),
         ],
+        Difficulty::easy(),
     );
 
     sector!(sectors, "plains1" =>
@@ -124,13 +125,14 @@ pub fn sectors() -> HashMap<&'static str, Sector> {
                 true,
             ),
         ],
+        Difficulty::hard(),
     );
 
     sector!(sectors, "peninsula1" => 
         [Some("plains3"), None, None, None],
         vec![
             Entity::new(17, 14,
-                EntityKind::Item(Item::full("Orc Club", entity_id(), vec![
+                EntityKind::Item(Item::full("Battleaxe", entity_id(), vec![
                     Buff::Damage(3),
                     Buff::MaxHealth(2),
                 ], vec![

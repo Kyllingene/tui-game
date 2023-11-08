@@ -33,6 +33,82 @@ pub fn handle(world: &mut World) -> TurnResult {
                     TurnResult::Ok
                 }
             }
+            Key::Char('i') => {
+                let mut items = world.draw_inventory_full();
+                let mut cap = items.len().saturating_sub(1);
+
+                let mut item_id = 0;
+                let mut last_y = None;
+
+                if let Some(y) = items.get(item_id).copied() {
+                    cod::color::de();
+                    cod::pixel('-', 1, y);
+                    cod::flush();
+
+                    last_y = Some(y);
+                }
+
+                while let Some(key) = cod::read::key() {
+                    match key {
+                        Key::ArrowUp => if item_id > 0 {
+                            item_id -= 1;
+                        }
+                        Key::ArrowDown => item_id = (item_id + 1).min(cap),
+
+                        Key::Char('d' | 'D') => {
+                            let msg = "Remove (y/N)?";
+
+                            let name = &world.player.inventory[item_id].name;
+                            let width = (name.len().max(msg.len()) + 4) as u32;
+
+                            cod::rect_fill(' ', 1, 1, width + 1, 4);
+
+                            cod::color::fg(1);
+                            cod::orth_line('-', 1, 1, width + 1, 1).unwrap();
+                            cod::orth_line('-', 1, 4, width + 1, 4).unwrap();
+                            cod::orth_line('|', 1, 1, 1, 4).unwrap();
+                            cod::orth_line('|', width + 1, 1, width + 1, 4).unwrap();
+                            cod::pixel('+', 1, 1);
+                            cod::pixel('+', 1, 4);
+                            cod::pixel('+', width + 1, 1);
+                            cod::pixel('+', width + 1, 4);
+
+                            cod::color::de_fg();
+                            cod::blit(msg, 3, 2);
+                            cod::blit(name, 3, 3);
+                            cod::goto::bot();
+                            cod::flush();
+
+                            if matches!(cod::read::key(), Some(Key::Char('y' | 'Y'))) {
+                                let item = world.player.inventory.remove(item_id);
+                                item.unapply(&mut world.player);
+                                item_id = item_id.saturating_sub(1);
+                            }
+
+                            items = world.draw_inventory_full();
+                            cap = items.len().saturating_sub(1);
+                        }
+
+                        Key::Char('q' | 'Q') => break,
+                        _ => continue,
+                    }
+
+                    if let Some(y) = items.get(item_id).copied() {
+                        if let Some(y) = last_y {
+                            cod::pixel(' ', 1, y);
+                        }
+
+                        cod::color::de();
+                        cod::pixel('-', 1, y);
+
+                        cod::flush();
+
+                        last_y = Some(y);
+                    }
+                }
+
+                TurnResult::Menued
+            }
             Key::Char('d') => {
                 cod::goto::pos(0, HEIGHT as u32);
                 cod::clear::line();

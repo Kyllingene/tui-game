@@ -213,7 +213,7 @@ impl World {
     pub fn draw(&self, x: u32, y: u32) {
         self.map.draw(x, y);
         self.draw_key();
-        self.draw_inventory(x, y);
+        self.draw_inventory_side(x, y);
 
         for entity in &self.entities {
             entity.draw(x, y);
@@ -225,13 +225,41 @@ impl World {
         cod::color::de_fg();
     }
 
-    fn draw_inventory(&self, x: u32, mut y: u32) {
+    fn draw_inventory_side(&self, x: u32, mut y: u32) {
         cod::color::de();
         let x = x + (WIDTH as u32 * 2) + 2;
         for item in &self.player.inventory {
             cod::blit(&item.name, x, y);
             y += 1;
         }
+    }
+
+    /// Draws the full inventory screen.
+    ///
+    /// Returns the y coordinate of each item name.
+    pub fn draw_inventory_full(&self) -> Vec<u32> {
+        let mut coords = Vec::with_capacity(self.player.inventory.len());
+        cod::clear::all();
+
+        let mut y = 1;
+        for item in &self.player.inventory {
+            coords.push(y);
+            y += item.draw(3, y) + 1;
+        }
+        y -= 2;
+
+        cod::color::de_fg();
+        cod::pixel('+', 0, 0);
+        if y != 0 {
+            cod::orth_line('|', 0, 1, 0, y).unwrap();
+        }
+        cod::pixel('+', 0, y);
+        cod::blit("- Inventory -+", 1, 0);
+
+        cod::goto::bot();
+        cod::flush();
+
+        coords
     }
 
     fn draw_key(&self) {
