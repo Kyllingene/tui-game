@@ -1,6 +1,6 @@
 use std::ops::ControlFlow;
 
-use cod::Key;
+use cod::{BoxChars, Key};
 
 use crate::map::Direction;
 use crate::save;
@@ -50,9 +50,7 @@ pub fn handle(world: &mut World) -> TurnResult {
 
                 while let Some(key) = cod::read::key() {
                     match key {
-                        Key::ArrowUp => if item_id > 0 {
-                            item_id -= 1;
-                        }
+                        Key::ArrowUp => item_id = item_id.saturating_sub(1),
                         Key::ArrowDown => item_id = (item_id + 1).min(cap),
 
                         Key::Char('d' | 'D') => {
@@ -61,17 +59,14 @@ pub fn handle(world: &mut World) -> TurnResult {
                             let name = &world.player.inventory[item_id].name;
                             let width = (name.len().max(msg.len()) + 4) as u32;
 
-                            cod::rect_fill(' ', 1, 1, width + 1, 4);
+                            cod::clear::rect(1, 1, width + 1, 4).unwrap();
 
                             cod::color::fg(1);
-                            cod::orth_line('-', 1, 1, width + 1, 1).unwrap();
-                            cod::orth_line('-', 1, 4, width + 1, 4).unwrap();
-                            cod::orth_line('|', 1, 1, 1, 4).unwrap();
-                            cod::orth_line('|', width + 1, 1, width + 1, 4).unwrap();
-                            cod::pixel('+', 1, 1);
-                            cod::pixel('+', 1, 4);
-                            cod::pixel('+', width + 1, 1);
-                            cod::pixel('+', width + 1, 4);
+                            cod::rect_lines(BoxChars {
+                                horizontal: '-',
+                                vertical: '|',
+                                corner: '+',
+                            }, 1, 1, width + 1, 4).unwrap();
 
                             cod::color::de_fg();
                             cod::blit(msg, 3, 2);
