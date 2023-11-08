@@ -35,7 +35,7 @@ impl Entity {
     }
 
     pub fn spawn_random(world: &World) -> Option<Entity> {
-        let difficulty = world.map.sector().difficulty;
+        let difficulty = world.difficulty * world.map.sector().difficulty;
 
         if world.entities.len() >= world.max_entities() as usize {
             return None;

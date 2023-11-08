@@ -5,6 +5,8 @@ use cod::Key;
 use crate::map::Direction;
 use crate::save;
 use crate::world::World;
+use crate::sector::HEIGHT;
+use crate::difficulty::Difficulty;
 
 pub fn handle(world: &mut World) -> TurnResult {
     if let Some(key) = cod::read::key() {
@@ -31,6 +33,29 @@ pub fn handle(world: &mut World) -> TurnResult {
                     TurnResult::Ok
                 }
             }
+            Key::Char('d') => {
+                cod::goto::pos(0, HEIGHT as u32);
+                cod::clear::line();
+                print!("Difficulty (easy, normal hard): ");
+                cod::flush();
+                let diff_str = cod::read::line();
+                let difficulty = diff_str.as_ref().and_then(|d| Some(match d.to_lowercase().as_str() {
+                    "easy" => Difficulty::easy(),
+                    "normal" => Difficulty::normal(),
+                    "hard" => Difficulty::hard(),
+                    _ => None?,
+                }));
+
+                if let Some(difficulty) = difficulty {
+                    world.difficulty = difficulty;
+                    world.draw_message(format!("Set difficulty to {}", diff_str.unwrap()), 2);
+                    cod::read::key();
+                } else {
+                    world.draw_message("Invalid difficulty", 1);
+                }
+
+                TurnResult::Menued
+            }
             _ => TurnResult::InvalidKey(key),
         }
     } else {
@@ -50,6 +75,7 @@ pub enum TurnResult {
     PickedUpItem(String),
     Saved,
     Loaded,
+    Menued,
     WaterMove,
     Ate(u32),
     HungerDeath,
@@ -76,6 +102,7 @@ impl TurnResult {
             | Self::WaterMove
             | Self::Saved
             | Self::Loaded
+            | Self::Menued
             | Self::Ate(_) => false,
             Self::Quit | Self::HungerDeath | Self::ThirstDeath | Self::ViolentDeath => true,
         }

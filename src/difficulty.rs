@@ -1,3 +1,5 @@
+use std::ops::Mul;
+
 #[derive(Debug, Clone, Copy, PartialEq, PartialOrd)]
 pub struct Difficulty {
     pub food_mul: f32,
@@ -53,6 +55,20 @@ impl Difficulty {
 impl Default for Difficulty {
     fn default() -> Self {
         Self::new()
+    }
+}
+
+impl Mul for Difficulty {
+    type Output = Self;
+    fn mul(self, other: Self) -> Self {
+        Self {
+            food_mul: self.food_mul * other.food_mul,
+            food_food_mul: self.food_food_mul * other.food_food_mul,
+
+            enemy_mul: self.enemy_mul * other.enemy_mul,
+            enemy_health_mul: self.enemy_health_mul * other.enemy_health_mul,
+            enemy_damage_mul: self.enemy_damage_mul * other.enemy_damage_mul,
+        }
     }
 }
 

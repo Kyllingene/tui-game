@@ -7,6 +7,7 @@ use crate::input::{self, TurnResult};
 use crate::map::{Direction, Map, TileKind, HEIGHT, WIDTH};
 use crate::player::{constants::*, Player};
 use crate::world_map::sectors;
+use crate::difficulty::Difficulty;
 
 #[derive(Debug)]
 pub struct World {
@@ -15,6 +16,7 @@ pub struct World {
     pub entities: Vec<Entity>,
     pub despawned: Vec<(&'static str, u32)>,
     pub turn: u32,
+    pub difficulty: Difficulty,
 }
 
 impl World {
@@ -37,6 +39,7 @@ impl World {
             entities,
             despawned: Vec::new(),
             turn: 0,
+            difficulty: Difficulty::normal(),
         }
     }
 
