@@ -40,7 +40,7 @@ impl Distribution<Direction> for Standard {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Map {
     pub sectors: HashMap<&'static str, Sector>,
     pub current_sector: Sector,

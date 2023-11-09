@@ -84,7 +84,7 @@ pub fn handle(world: &mut World) -> TurnResult {
                             cap = items.len().saturating_sub(1);
                         }
 
-                        Key::Char('q' | 'Q') => break,
+                        Key::Char('q' | 'Q') | Key::Escape => break,
                         _ => continue,
                     }
 

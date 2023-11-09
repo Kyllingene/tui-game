@@ -1,9 +1,10 @@
 use rand::{thread_rng, Rng};
+use cod::BoxChars;
 
 use crate::input::TurnResult;
 use crate::item::Item;
 use crate::map::{Direction, Map, Tile, TileKind, HEIGHT, WIDTH};
-use crate::player::Player;
+use crate::player::{constants::CHARACTER, Player};
 use crate::world::World;
 use crate::difficulty::DifficultyMul;
 
@@ -76,9 +77,9 @@ impl Entity {
 
     pub fn pick_spawn_tile(kind: &EntityKind, world: &World) -> (u32, u32) {
         let mut rng = thread_rng();
+        // TODO: fix this filthy hack
         let mut iterations = 0;
         'outer: loop {
-            // TODO: fix this filthy hack
             for y in (0..HEIGHT as u32).rev() {
                 for x in (0..WIDTH as u32).rev() {
                     if world.player.x == x && world.player.y == y {
@@ -86,31 +87,12 @@ impl Entity {
                     }
                     let tile = world.map.get(x, y).unwrap();
 
-                    let chance = match tile.kind {
-                        TileKind::Water | TileKind::Road | TileKind::Mountain => continue,
-                        TileKind::Grass => match kind {
-                            EntityKind::Food { .. } => 0.75,
-                            EntityKind::Enemy { .. } => 0.15,
-                            EntityKind::Boss { .. } | EntityKind::Item(_) => {
-                                unreachable!("Bosses cannot be spawned randomly")
-                            }
-                        },
-                        TileKind::Forest => match kind {
-                            EntityKind::Food { .. } => 0.60,
-                            EntityKind::Enemy { .. } => 0.25,
-                            EntityKind::Boss { .. } | EntityKind::Item(_) => {
-                                unreachable!("Bosses cannot be spawned randomly")
-                            }
-                        },
-                        TileKind::Hill => match kind {
-                            EntityKind::Food { .. } => 0.10,
-                            EntityKind::Enemy { .. } => 0.75,
-                            EntityKind::Boss { .. } | EntityKind::Item(_) => {
-                                unreachable!("Bosses cannot be spawned randomly")
-                            }
-                        },
-                    } / (WIDTH * HEIGHT) as f32
-                        + (iterations as f32 * 0.1);
+                    let mut chance = kind.spawn_percentage(&tile) / (WIDTH * HEIGHT) as f32;
+                    if chance == 0.0 {
+                        continue;
+                    }
+
+                    chance += iterations as f32 / (WIDTH * HEIGHT / 2) as f32;
 
                     let r: f32 = rng.gen();
                     if r <= chance {
@@ -186,6 +168,39 @@ impl Entity {
 
                 TurnResult::PickedUpItem(name)
             }
+
+            EntityKind::Npc { dialogue, dialogue_idx, .. } => {
+                if let Some(idx) = dialogue_idx {
+                    let speech = &dialogue[*idx];
+                    let idx = *idx + 1;
+                    if idx < dialogue.len() {
+                        *dialogue_idx = Some(idx);
+                    } else {
+                        *dialogue_idx = None;
+                    }
+                    
+                    let lines = speech.lines();
+                    let (width, height) = lines
+                        .fold((0, 0), |(w, h), l| (
+                            w.max(l.len()),
+                            h + 1,
+                        ));
+
+                    cod::color::de();
+                    cod::clear::rect(0, 0, width as u32 + 1, height + 1);
+                    cod::rect_lines(BoxChars {
+                        horizontal: '-',
+                        vertical: '|',
+                        corner: '+',
+                    }, 0, 0, width as u32 + 1, height + 1);
+
+                    cod::blit(speech, 1, 1);
+                    cod::flush();
+                    cod::read::key();
+                }
+
+                TurnResult::Menued
+            }
         }
     }
 
@@ -209,13 +224,18 @@ impl Entity {
                 if move_chance <= ENEMY_MOVE_CHANCE {
                     let (x, y) = self.random_move(true, world, &mut rng);
                     if world.player.x == x && world.player.y == y {
-                        return self.interact(&mut world.player, &mut world.map);
+                        let mut player = world.player.clone();
+                        let mut map = world.map.clone();
+                        let res = self.interact(&mut player, &mut map);
+                        world.player = player;
+                        world.map = map;
+                        return res;
                     }
                 }
 
                 TurnResult::Ok
             }
-            EntityKind::Boss { .. } | EntityKind::Item(_) => TurnResult::Ok,
+            EntityKind::Boss { .. } | EntityKind::Item(_) | EntityKind::Npc { .. } => TurnResult::Ok,
         }
     }
 
@@ -299,15 +319,42 @@ pub enum EntityKind {
         block: (Direction, Tile),
     },
     Item(Item),
+    Npc {
+        dialogue: &'static[&'static str],
+        dialogue_idx: Option<usize>,
+        id: u32,
+    },
 }
 
 impl EntityKind {
+    pub fn spawn_percentage(&self, tile: &Tile) -> f32 {
+        match tile.kind {
+            TileKind::Water | TileKind::Road | TileKind::Mountain => 0.0,
+            TileKind::Grass => match self {
+                EntityKind::Food { .. } => 0.75,
+                EntityKind::Enemy { .. } => 0.15,
+                EntityKind::Boss { .. } | EntityKind::Item(_) | EntityKind::Npc { .. } => 0.0,
+            },
+            TileKind::Forest => match self {
+                EntityKind::Food { .. } => 0.60,
+                EntityKind::Enemy { .. } => 0.25,
+                EntityKind::Boss { .. } | EntityKind::Item(_) | EntityKind::Npc { .. } => 0.0,
+            },
+            TileKind::Hill => match self {
+                EntityKind::Food { .. } => 0.10,
+                EntityKind::Enemy { .. } => 0.75,
+                EntityKind::Boss { .. } | EntityKind::Item(_) | EntityKind::Npc { .. } => 0.0,
+            },
+        }
+    }
+
     pub fn color(&self) -> u8 {
         match self {
             Self::Food { .. } => 108,
             Self::Enemy { .. } => 210,
             Self::Boss { .. } => 136,
             Self::Item(_) => 56,
+            Self::Npc { .. } => 79,
         }
     }
 
@@ -317,6 +364,7 @@ impl EntityKind {
             Self::Enemy { .. } => '!',
             Self::Boss { .. } => '#',
             Self::Item(_) => '?',
+            Self::Npc { .. } => '&',
         }
     }
 }

@@ -124,6 +124,18 @@ pub fn sectors() -> HashMap<&'static str, Sector> {
                 ])),
                 true,
             ),
+            Entity::new(20, 7,
+                EntityKind::Npc {
+                    dialogue: &[
+                        "You'd better be careful,\nthese wilds are dangerous.",
+                        "They say there's valuable\ntreasure past the river.",
+                        "Well, good luck, traveler!"
+                    ],
+                    dialogue_idx: Some(0),
+                    id: entity_id(),
+                },
+                true,
+            ),
         ],
         Difficulty::hard(),
     );

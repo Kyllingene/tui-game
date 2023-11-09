@@ -32,9 +32,9 @@ checksum = "baf1de4339761588bc0619e3cbc0120ee582ebb74b53b4efbf79117bd2da40fd"
 
 [[package]]
 name = "cod"
-version = "6.1.4"
+version = "6.1.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "243aa71a64a978dc38f13900c1143039bb382949c1e2e933395c8e04f3530aa4"
+checksum = "a7231599f99eb63bf472efd721639d8efeb51e217e9b648251e08d93cf17d42a"
 dependencies = [
  "console",
 ]
