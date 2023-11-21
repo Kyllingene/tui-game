@@ -73,13 +73,6 @@ impl Map {
         self.current_sector.entities().to_vec()
     }
 
-    pub fn const_id(&self, id: &str) -> &'static str {
-        self.sectors
-            .get(id)
-            .expect("Found invalid sector identifier")
-            .id
-    }
-
     pub fn save_entities(&mut self, id: &str, entities: Vec<Entity>) {
         self.sectors
             .get_mut(id)
@@ -100,6 +93,7 @@ impl Map {
         self.sector().tiles()
     }
 
+    #[allow(dead_code)]
     pub fn get_sector(&self, id: &str) -> Option<&Sector> {
         if id == self.current_sector.id {
             Some(&self.current_sector)
@@ -153,22 +147,25 @@ impl Map {
 pub enum TileKind {
     #[default]
     Water = b'~',
-    Road = b'=',
     Grass = b'_',
     Forest = b'$',
     Hill = b'n',
     Mountain = b'A',
+    Road = b'=',
+    Village = b'%',
+    Building = b'^',
 }
 
 impl TileKind {
     pub fn color(&self) -> (u8, u8, u8) {
         match self {
             Self::Water => (0, 77, 153),
-            Self::Road => (158, 158, 158),
             Self::Grass => (0, 153, 25),
             Self::Forest => (0, 77, 38),
             Self::Hill => (255, 238, 230),
             Self::Mountain => (230, 255, 242),
+            Self::Road => (158, 158, 158),
+            Self::Village | Self::Building => (102, 51, 0),
         }
     }
 

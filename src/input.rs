@@ -1,12 +1,23 @@
-use std::ops::ControlFlow;
-
 use cod::{BoxChars, Key};
 
+use crate::difficulty::Difficulty;
 use crate::map::Direction;
 use crate::save;
-use crate::world::World;
 use crate::sector::HEIGHT;
-use crate::difficulty::Difficulty;
+use crate::world::World;
+
+#[macro_export]
+macro_rules! good {
+    () => { $crate::input::GoodResult::Ok.into() };
+    ( $kind:ident ) => { $crate::input::GoodResult::$kind.into() };
+    ( $kind:ident, $( $arg:expr ),* ) => { $crate::input::GoodResult::$kind($($arg,)+).into() };
+}
+
+#[macro_export]
+macro_rules! bad {
+    ( $kind:ident ) => { $crate::input::BadResult::$kind.into() };
+    ( $kind:ident, $( $arg:expr ),* ) => { $crate::input::BadResult::$kind($($arg,)+).into() };
+}
 
 pub fn handle(world: &mut World) -> TurnResult {
     if let Some(key) = cod::read::key() {
@@ -15,22 +26,22 @@ pub fn handle(world: &mut World) -> TurnResult {
             Key::ArrowDown => world.go(Direction::Down),
             Key::ArrowLeft => world.go(Direction::Left),
             Key::ArrowRight => world.go(Direction::Right),
-            Key::Char('q') | Key::Char('\x04') => TurnResult::Quit,
+            Key::Char('q') | Key::Char('\x04') => bad!(Quit),
             Key::Char(' ') => world.interact(),
             Key::Char('s') => {
                 world.draw_message("Saving game", 3);
                 if save::save(world) {
-                    TurnResult::Saved
+                    good!(Saved)
                 } else {
-                    TurnResult::Ok
+                    good!()
                 }
             }
             Key::Char('l') => {
                 world.draw_message("Loading game", 3);
                 if save::load(world) {
-                    TurnResult::Loaded
+                    good!(Loaded)
                 } else {
-                    TurnResult::Ok
+                    good!()
                 }
             }
             Key::Char('i') => {
@@ -62,11 +73,18 @@ pub fn handle(world: &mut World) -> TurnResult {
                             cod::clear::rect(1, 1, width + 1, 4).unwrap();
 
                             cod::color::fg(1);
-                            cod::rect_lines(BoxChars {
-                                horizontal: '-',
-                                vertical: '|',
-                                corner: '+',
-                            }, 1, 1, width + 1, 4).unwrap();
+                            cod::rect_lines(
+                                BoxChars {
+                                    horizontal: '-',
+                                    vertical: '|',
+                                    corner: '+',
+                                },
+                                1,
+                                1,
+                                width + 1,
+                                4,
+                            )
+                            .unwrap();
 
                             cod::color::de_fg();
                             cod::blit(msg, 3, 2);
@@ -102,7 +120,7 @@ pub fn handle(world: &mut World) -> TurnResult {
                     }
                 }
 
-                TurnResult::Menued
+                good!(Menued)
             }
             Key::Char('d') => {
                 cod::goto::pos(0, HEIGHT as u32);
@@ -110,12 +128,14 @@ pub fn handle(world: &mut World) -> TurnResult {
                 print!("Difficulty (easy, normal hard): ");
                 cod::flush();
                 let diff_str = cod::read::line();
-                let difficulty = diff_str.as_ref().and_then(|d| Some(match d.to_lowercase().as_str() {
-                    "easy" => Difficulty::easy(),
-                    "normal" => Difficulty::normal(),
-                    "hard" => Difficulty::hard(),
-                    _ => None?,
-                }));
+                let difficulty = diff_str.as_ref().and_then(|d| {
+                    Some(match d.to_lowercase().as_str() {
+                        "easy" => Difficulty::easy(),
+                        "normal" => Difficulty::normal(),
+                        "hard" => Difficulty::hard(),
+                        _ => None?,
+                    })
+                });
 
                 if let Some(difficulty) = difficulty {
                     world.difficulty = difficulty;
@@ -125,17 +145,19 @@ pub fn handle(world: &mut World) -> TurnResult {
                     world.draw_message("Invalid difficulty", 1);
                 }
 
-                TurnResult::Menued
+                good!(Menued)
             }
-            _ => TurnResult::InvalidKey(key),
+            _ => good!(InvalidKey, key)
         }
     } else {
-        TurnResult::NoKey
+        good!(NoKey)
     }
 }
 
+pub type TurnResult = Result<GoodResult, BadResult>;
+
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub enum TurnResult {
+pub enum GoodResult {
     Ok,
     NoKey,
     InvalidKey(Key),
@@ -149,55 +171,25 @@ pub enum TurnResult {
     Menued,
     WaterMove,
     Ate(u32),
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub enum BadResult {
     HungerDeath,
     ThirstDeath,
     ViolentDeath,
     Quit,
 }
 
-impl TurnResult {
-    pub fn good(&self) -> bool {
-        !self.bad()
-    }
-
-    pub fn bad(&self) -> bool {
-        match self {
-            Self::Ok
-            | Self::NoKey
-            | Self::InvalidKey(_)
-            | Self::Fight(_, _)
-            | Self::WonFight(_)
-            | Self::DefeatedBoss(_)
-            | Self::InvalidMove(_)
-            | Self::PickedUpItem(_)
-            | Self::WaterMove
-            | Self::Saved
-            | Self::Loaded
-            | Self::Menued
-            | Self::Ate(_) => false,
-            Self::Quit | Self::HungerDeath | Self::ThirstDeath | Self::ViolentDeath => true,
-        }
+impl From<GoodResult> for TurnResult {
+    fn from(res: GoodResult) -> Self {
+        Ok(res)
     }
 }
 
-impl std::ops::FromResidual for TurnResult {
-    fn from_residual(residual: Self) -> Self {
-        residual
+impl From<BadResult> for TurnResult {
+    fn from(res: BadResult) -> Self {
+        Err(res)
     }
 }
 
-impl std::ops::Try for TurnResult {
-    type Output = Self;
-    type Residual = Self;
-
-    fn from_output(output: Self) -> Self {
-        output
-    }
-    fn branch(self) -> ControlFlow<Self, Self> {
-        if self.good() {
-            ControlFlow::Continue(self)
-        } else {
-            ControlFlow::Break(self)
-        }
-    }
-}

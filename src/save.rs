@@ -150,7 +150,7 @@ pub fn load(world: &mut World) -> bool {
         dir.push(format!("frob-save-{slot}.json.zst"));
         load_from(dir, world)
     } else {
-       cod::read::key();
-       false
+        cod::read::key();
+        false
     }
 }

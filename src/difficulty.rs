@@ -11,12 +11,38 @@ pub struct Difficulty {
 }
 
 impl Difficulty {
-    pub const fn food_mul(mut self, food_mul: f32) -> Self { self.food_mul = food_mul; self }
-    pub const fn food_food_mul(mut self, food_food_mul: f32) -> Self { self.food_food_mul = food_food_mul; self }
+    pub const fn food_mul(mut self, food_mul: f32) -> Self {
+        self.food_mul = food_mul;
+        self
+    }
+    pub const fn food_food_mul(mut self, food_food_mul: f32) -> Self {
+        self.food_food_mul = food_food_mul;
+        self
+    }
 
-    pub const fn enemy_mul(mut self, enemy_mul: f32) -> Self { self.enemy_mul = enemy_mul; self }
-    pub const fn enemy_health_mul(mut self, enemy_health_mul: f32) -> Self { self.enemy_health_mul = enemy_health_mul; self }
-    pub const fn enemy_damage_mul(mut self, enemy_damage_mul: f32) -> Self { self.enemy_damage_mul = enemy_damage_mul; self }
+    pub const fn enemy_mul(mut self, enemy_mul: f32) -> Self {
+        self.enemy_mul = enemy_mul;
+        self
+    }
+    pub const fn enemy_health_mul(mut self, enemy_health_mul: f32) -> Self {
+        self.enemy_health_mul = enemy_health_mul;
+        self
+    }
+    pub const fn enemy_damage_mul(mut self, enemy_damage_mul: f32) -> Self {
+        self.enemy_damage_mul = enemy_damage_mul;
+        self
+    }
+
+    pub const fn none() -> Self {
+        Self {
+            food_mul: -10.0,
+            food_food_mul: -10.0,
+
+            enemy_mul: -10.0,
+            enemy_health_mul: -10.0,
+            enemy_damage_mul: -10.0,
+        }
+    }
 
     pub const fn easy() -> Self {
         Self::new()
@@ -39,7 +65,7 @@ impl Difficulty {
             .enemy_health_mul(1.5)
             .enemy_damage_mul(2.0)
     }
-    
+
     pub const fn new() -> Self {
         Self {
             food_mul: 1.0,
@@ -73,7 +99,10 @@ impl Mul for Difficulty {
 }
 
 impl std::hash::Hash for Difficulty {
-    fn hash<H>(&self, hasher: &mut H) where H: std::hash::Hasher {
+    fn hash<H>(&self, hasher: &mut H)
+    where
+        H: std::hash::Hasher,
+    {
         hasher.write_u64((self.food_mul * 100.0) as u64);
         hasher.write_u64((self.food_food_mul * 100.0) as u64);
 
@@ -92,4 +121,3 @@ impl DifficultyMul for u32 {
         (self as f32 * multiplier) as u32
     }
 }
-

@@ -1,6 +1,6 @@
+use crate::difficulty::Difficulty;
 use crate::entity::Entity;
 use crate::map::{Direction, Tile, TileKind};
-use crate::difficulty::Difficulty;
 
 pub const WIDTH: usize = 24;
 pub const HEIGHT: usize = 16;
@@ -13,6 +13,9 @@ pub struct Sector {
     neighbors: [Option<&'static str>; 4],
     changed: Vec<(u32, u32)>,
     pub difficulty: Difficulty,
+    pub do_survival: bool,
+    entrances: Vec<(u32, u32, &'static str)>,
+    pub return_tile: Option<(u32, u32)>,
 }
 
 impl Sector {
@@ -37,11 +40,6 @@ impl Sector {
                         kind: TileKind::Grass,
                     }
                 }
-                '=' => {
-                    tiles[y][x] = Tile {
-                        kind: TileKind::Road,
-                    }
-                }
                 '$' => {
                     tiles[y][x] = Tile {
                         kind: TileKind::Forest,
@@ -55,6 +53,21 @@ impl Sector {
                 'A' => {
                     tiles[y][x] = Tile {
                         kind: TileKind::Mountain,
+                    }
+                }
+                '=' => {
+                    tiles[y][x] = Tile {
+                        kind: TileKind::Road,
+                    }
+                }
+                '%' => {
+                    tiles[y][x] = Tile {
+                        kind: TileKind::Village,
+                    }
+                }
+                '^' => {
+                    tiles[y][x] = Tile {
+                        kind: TileKind::Building,
                     }
                 }
                 '\n' => {
@@ -89,7 +102,35 @@ impl Sector {
             neighbors,
             changed: Vec::new(),
             difficulty: Difficulty::normal(),
+            do_survival: true,
+            entrances: Vec::new(),
+            return_tile: None,
         }
+    }
+
+    pub fn entrance(&mut self, x: u32, y: u32, id: &'static str) {
+        self.entrances.push((x, y, id));
+    }
+
+    pub fn get_entrance(&self, x: u32, y: u32) -> Option<&'static str> {
+        self.entrances.iter().find(|(tx, ty, _)| (*tx, *ty) == (x, y)).map(|(_, _, id)| *id)
+    }
+
+    pub fn town(
+        map: &str,
+        id: &'static str,
+        entities: Vec<Entity>,
+        outside: &'static str,
+        return_x: u32,
+        return_y: u32,
+    ) -> Self {
+        let mut s = Self::new(map, id, entities, [Some(outside); 4]);
+        
+        s.do_survival = false;
+        s.difficulty = Difficulty::none();
+        s.return_tile = Some((return_x, return_y));
+
+        s
     }
 
     pub fn entities(&self) -> &[Entity] {
@@ -110,9 +151,12 @@ impl Sector {
     }
 
     pub fn despawn_id(&mut self, id: u32) {
-        if let Some((i, _)) = self.entities.iter()
+        if let Some((i, _)) = self
+            .entities
+            .iter()
             .enumerate()
-            .find(|(_, e)| e.id() == Some(id)) {
+            .find(|(_, e)| e.id() == Some(id))
+        {
             self.despawn(i);
         }
     }

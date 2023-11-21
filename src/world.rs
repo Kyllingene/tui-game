@@ -2,12 +2,13 @@ use std::fmt::Display;
 
 use rand::{thread_rng, Rng};
 
+use crate::{good, bad};
+use crate::difficulty::Difficulty;
 use crate::entity::{Entity, EntityKind};
-use crate::input::{self, TurnResult};
+use crate::input::{self, TurnResult, GoodResult};
 use crate::map::{Direction, Map, TileKind, HEIGHT, WIDTH};
 use crate::player::{constants::*, Player};
 use crate::world_map::sectors;
-use crate::difficulty::Difficulty;
 
 #[derive(Debug)]
 pub struct World {
@@ -50,10 +51,14 @@ impl World {
         }
     }
 
+    #[allow(unused)]
     pub fn despawn_id(&mut self, id: u32) {
-        if let Some((i, _)) = self.entities.iter()
+        if let Some((i, _)) = self
+            .entities
+            .iter()
             .enumerate()
-            .find(|(_, e)| e.id() == Some(id)) {
+            .find(|(_, e)| e.id() == Some(id))
+        {
             self.despawn(i);
         }
     }
@@ -79,37 +84,37 @@ impl World {
         cod::flush();
     }
 
-    pub fn draw_result(&self, res: TurnResult) {
+    pub fn draw_result(&self, res: GoodResult) {
         self.draw_key();
         match res {
-            TurnResult::NoKey => self.draw_message("Please press a key", 1),
-            TurnResult::InvalidMove(_) => self.draw_message("You can't move there", 1),
-            TurnResult::WaterMove => self.draw_message("You drank your fill", 2),
-            TurnResult::InvalidKey(_) => self.draw_message("That's not a valid key", 1),
-            TurnResult::Fight(dmg, hp) => self.draw_message(
+            GoodResult::NoKey => self.draw_message("Please press a key", 1),
+            GoodResult::InvalidMove(_) => self.draw_message("You can't move there", 1),
+            GoodResult::WaterMove => self.draw_message("You drank your fill", 2),
+            GoodResult::InvalidKey(_) => self.draw_message("That's not a valid key", 1),
+            GoodResult::Fight(dmg, hp) => self.draw_message(
                 format!(
                     "You dealt {}, they dealt {dmg} and are at {hp}",
                     self.player.damage
                 ),
                 3,
             ),
-            TurnResult::WonFight(upgrade) => {
+            GoodResult::WonFight(upgrade) => {
                 if upgrade {
                     self.draw_message("You won and got an upgrade!", 2)
                 } else {
                     self.draw_message("You killed the enemy!", 2)
                 }
             }
-            TurnResult::DefeatedBoss(_id) => {
+            GoodResult::DefeatedBoss(_id) => {
                 self.draw_message("You killed the boss!", 2);
             }
-            TurnResult::Ate(food) => {
+            GoodResult::Ate(food) => {
                 self.draw_message(format!("You ate {food} food and healed 2"), 2)
             }
-            TurnResult::Saved => {
+            GoodResult::Saved => {
                 self.draw_message("Saved!", 2);
             }
-            TurnResult::Loaded => {
+            GoodResult::Loaded => {
                 self.draw_message("Loaded!", 2);
             }
             _ => {}
@@ -118,7 +123,7 @@ impl World {
 
     pub fn update(&mut self) -> TurnResult {
         let mut res = input::handle(self)?;
-        while res != TurnResult::Ok {
+        while res != GoodResult::Ok {
             self.draw(0, 0);
             self.draw_key();
             self.draw_result(res);
@@ -127,30 +132,33 @@ impl World {
 
         self.turn += 1;
 
-        if self.turn % HUNGER_INTERVAL == 0 {
+        if self.turn % HUNGER_INTERVAL == 0 && self.map.sector().do_survival {
             self.player.hunger += 1;
         }
 
-        if self.turn % THIRST_INTERVAL == 0 && self.player.thirst <= self.player.thirst_cap {
+        if self.turn % THIRST_INTERVAL == 0
+            && self.player.thirst <= self.player.thirst_cap
+            && self.map.sector().do_survival
+        {
             self.player.thirst += 1;
         }
 
         if self.player.thirst > self.player.thirst_cap {
             self.player.health = self.player.health.saturating_sub(1);
             if self.player.health == 0 {
-                return TurnResult::ThirstDeath;
+                return bad!(ThirstDeath);
             }
 
             self.draw_message("You took 1 damage from thirst!", 1);
         } else if self.player.hunger > self.player.thirst_cap {
-            return TurnResult::HungerDeath;
+            return bad!(HungerDeath);
         }
 
         let mut kill = Vec::new();
         let mut entities = self.entities.clone();
         for (i, entity) in entities.iter_mut().enumerate() {
             let r = entity.ai(self)?;
-            if r != TurnResult::Ok {
+            if r != GoodResult::Ok {
                 res = r;
                 self.draw_result(res);
             }
@@ -174,12 +182,12 @@ impl World {
 
         self.entities = entities;
 
-        TurnResult::Ok
+        good!()
     }
 
     pub fn interact(&mut self) -> TurnResult {
         let mut kill = None;
-        let mut res = TurnResult::Ok;
+        let mut res = good!();
         if let Some((i, entity)) = &mut self
             .entities
             .iter_mut()
@@ -199,15 +207,15 @@ impl World {
             self.player.health = (self.player.health + self.turn % 2).min(self.player.max_health);
         }
 
-        if matches!(res, TurnResult::WonFight(_)) {
+        if matches!(res, GoodResult::WonFight(_)) {
             let mut rng = thread_rng();
             if rng.gen::<f32>() <= UPGRADE_CHANCE {
                 self.player.damage += 1;
-                res = TurnResult::WonFight(true);
+                res = good!(WonFight, true);
             }
         }
 
-        res
+        Ok(res)
     }
 
     pub fn draw(&self, x: u32, y: u32) {
@@ -294,7 +302,7 @@ impl World {
         print!("  ");
 
         cod::color::fg(140);
-        print!("\nPlayer: &  ");
+        print!("\nPlayer: G  ");
 
         if self.player.health <= 4 {
             cod::color::fg(0);
@@ -353,53 +361,78 @@ impl World {
             if let Some(new_sector) = neighbor {
                 let entities = std::mem::take(&mut self.entities);
                 self.map.save_entities(
-                    self.map.current_sector.id,
+                    self.map.sector().id,
                     entities.into_iter().filter(|e| e.persist).collect(),
                 );
                 self.entities = self.map.load(new_sector);
 
-                match direction {
-                    Direction::Up => self.player.y = HEIGHT as u32 - 1,
-                    Direction::Down => self.player.y = 0,
-                    Direction::Left => self.player.x = WIDTH as u32 - 1,
-                    Direction::Right => self.player.x = 0,
-                }
-
-                return TurnResult::Ok;
-            } else {
-                return TurnResult::InvalidMove(direction);
-            }
-        }
-
-        match self.map.get(x, y).unwrap().kind {
-            TileKind::Mountain => TurnResult::InvalidMove(direction),
-            TileKind::Water => {
-                self.player.thirst = 0;
-                TurnResult::WaterMove
-            }
-
-            _ => {
-                self.player.x = x;
-                self.player.y = y;
-
-                let mut res = TurnResult::Ok;
-
-                let mut kill = Vec::new();
-                for (i, entity) in self.entities.iter_mut().enumerate() {
-                    if entity.x == x && entity.y == y {
-                        res = entity.interact(&mut self.player, &mut self.map)?;
-
-                        if !entity.alive {
-                            kill.push(i);
-                        }
+                if let Some((x, y)) = self.map.sector().return_tile {
+                    self.player.x = x;
+                    self.player.y = y;
+                } else {
+                    match direction {
+                        Direction::Up => self.player.y = HEIGHT as u32 - 1,
+                        Direction::Down => self.player.y = 0,
+                        Direction::Left => self.player.x = WIDTH as u32 - 1,
+                        Direction::Right => self.player.x = 0,
                     }
                 }
 
-                for (i, e) in kill.iter().enumerate() {
-                    self.despawn(e - i);
+                return good!();
+            } else {
+                return good!(InvalidMove, direction);
+            }
+        }
+
+        if let Some(new_sector) = self.map.sector().get_entrance(x, y) {
+            let entities = std::mem::take(&mut self.entities);
+            self.map.save_entities(
+                self.map.current_sector.id,
+                entities.into_iter().filter(|e| e.persist).collect(),
+            );
+            self.entities = self.map.load(new_sector);
+
+            self.player.x = 0;
+            self.player.y = 0;
+
+            if !self.map.sector().do_survival {
+                self.player.thirst = 0;
+                self.player.hunger = 0;
+                self.player.health = self.player.max_health;
+            }
+
+            good!()
+        } else {
+            match self.map.get(x, y).unwrap().kind {
+                TileKind::Mountain => good!(InvalidMove, direction),
+                TileKind::Water => {
+                    self.player.thirst = 0;
+                    good!(WaterMove)
                 }
 
-                res
+                _ => {
+                    self.player.x = x;
+                    self.player.y = y;
+
+                    let mut res = good!();
+
+                    let mut kill = Vec::new();
+                    for (i, entity) in self.entities.iter_mut().enumerate() {
+                        if entity.x == x && entity.y == y {
+                            res = entity.interact(&mut self.player, &mut self.map)?;
+
+                            if !entity.alive {
+                                kill.push(i);
+                            }
+                        }
+                    }
+
+                    for (i, e) in kill.iter().enumerate() {
+                        self.despawn(e - i);
+                    }
+
+                    Ok(res)
+                }
             }
         }
     }

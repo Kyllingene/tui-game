@@ -1,12 +1,13 @@
-use rand::{thread_rng, Rng};
 use cod::BoxChars;
+use rand::{thread_rng, Rng};
 
+use crate::{good, bad};
+use crate::difficulty::DifficultyMul;
 use crate::input::TurnResult;
 use crate::item::Item;
 use crate::map::{Direction, Map, Tile, TileKind, HEIGHT, WIDTH};
-use crate::player::{constants::CHARACTER, Player};
+use crate::player::Player;
 use crate::world::World;
-use crate::difficulty::DifficultyMul;
 
 const FOOD_MOVE_CHANCE: f32 = 0.55;
 const ENEMY_MOVE_CHANCE: f32 = 0.60;
@@ -54,8 +55,12 @@ impl Entity {
                 }
             } else if r - fsc <= ENEMY_SPAWN_CHANCE * difficulty.enemy_mul {
                 EntityKind::Enemy {
-                    health: rng.gen_range(2..(world.player.damage / 4).max(3)).apply(difficulty.enemy_health_mul),
-                    damage: rng.gen_range(1..(world.player.health / 3).max(2)).apply(difficulty.enemy_damage_mul),
+                    health: rng
+                        .gen_range(2..(world.player.damage / 4).max(3))
+                        .apply(difficulty.enemy_health_mul),
+                    damage: rng
+                        .gen_range(1..(world.player.health / 3).max(2))
+                        .apply(difficulty.enemy_damage_mul),
                 }
             } else {
                 return None;
@@ -112,21 +117,21 @@ impl Entity {
                 player.health = (player.health + 2).min(player.max_health);
                 self.alive = false;
 
-                TurnResult::Ate(*food)
+                good!(Ate, *food)
             }
 
             EntityKind::Enemy { health, damage } => {
                 if player.damage >= *health {
                     self.alive = false;
-                    TurnResult::WonFight(false)
+                    good!(WonFight, false)
                 } else if *damage >= player.health {
                     player.health = 0;
-                    TurnResult::ViolentDeath
+                    bad!(ViolentDeath)
                 } else {
                     *health -= player.damage;
                     player.health -= *damage;
 
-                    TurnResult::Fight(*damage, *health)
+                    good!(Fight, *damage, *health)
                 }
             }
 
@@ -148,15 +153,15 @@ impl Entity {
                     let x = self.x.wrapping_add_signed(diff.0);
                     let y = self.y.wrapping_add_signed(diff.1);
                     map.set(x, y, *tile);
-                    TurnResult::DefeatedBoss(*id)
+                    good!(DefeatedBoss, *id)
                 } else if *damage >= player.health {
                     player.health = 0;
-                    TurnResult::ViolentDeath
+                    bad!(ViolentDeath)
                 } else {
                     *health -= player.damage;
                     player.health -= *damage;
 
-                    TurnResult::Fight(*damage, *health)
+                    good!(Fight, *damage, *health)
                 }
             }
 
@@ -166,40 +171,59 @@ impl Entity {
                 let name = item.name.clone();
                 player.inventory.push(std::mem::take(item));
 
-                TurnResult::PickedUpItem(name)
+                good!(PickedUpItem, name)
             }
 
-            EntityKind::Npc { dialogue, dialogue_idx, .. } => {
+            EntityKind::Npc {
+                dialogue,
+                dialogue_idx,
+                items,
+                ..
+            } => {
                 if let Some(idx) = dialogue_idx {
                     let speech = &dialogue[*idx];
+
+                    if !items.is_empty() {
+                        let (item, item_idx) = &items[0];
+
+                        // prevent farming items via saves
+                        if item_idx == idx && !player.inventory.iter().any(|i| i.name == item.name) {
+                            let (item, _) = items.remove(0);
+                            item.apply(player);
+                            player.inventory.push(item);
+                        }
+                    }
+
                     let idx = *idx + 1;
                     if idx < dialogue.len() {
                         *dialogue_idx = Some(idx);
                     } else {
                         *dialogue_idx = None;
                     }
-                    
+
                     let lines = speech.lines();
-                    let (width, height) = lines
-                        .fold((0, 0), |(w, h), l| (
-                            w.max(l.len()),
-                            h + 1,
-                        ));
+                    let (width, height) = lines.fold((0, 0), |(w, h), l| (w.max(l.len()), h + 1));
 
                     cod::color::de();
-                    cod::clear::rect(0, 0, width as u32 + 1, height + 1);
-                    cod::rect_lines(BoxChars {
-                        horizontal: '-',
-                        vertical: '|',
-                        corner: '+',
-                    }, 0, 0, width as u32 + 1, height + 1);
+                    cod::clear::rect(0, 0, width as u32 + 1, height + 1).unwrap();
+                    cod::rect_lines(
+                        BoxChars {
+                            horizontal: '-',
+                            vertical: '|',
+                            corner: '+',
+                        },
+                        0,
+                        0,
+                        width as u32 + 1,
+                        height + 1,
+                    ).unwrap();
 
                     cod::blit(speech, 1, 1);
                     cod::flush();
                     cod::read::key();
                 }
 
-                TurnResult::Menued
+                good!(Menued)
             }
         }
     }
@@ -212,8 +236,6 @@ impl Entity {
                 if move_chance <= FOOD_MOVE_CHANCE {
                     self.random_move(false, world, &mut rng);
                 }
-
-                TurnResult::Ok
             }
             EntityKind::Enemy { health, damage } => {
                 let health_coeff = (*health as f32).tanh() / 2.0 + 0.5;
@@ -232,11 +254,11 @@ impl Entity {
                         return res;
                     }
                 }
-
-                TurnResult::Ok
             }
-            EntityKind::Boss { .. } | EntityKind::Item(_) | EntityKind::Npc { .. } => TurnResult::Ok,
+            EntityKind::Boss { .. } | EntityKind::Item(_) | EntityKind::Npc { .. } => {}
         }
+
+        good!()
     }
 
     pub fn random_move(
@@ -270,7 +292,7 @@ impl Entity {
             };
 
             match tile.kind {
-                TileKind::Water | TileKind::Mountain => continue,
+                TileKind::Water | TileKind::Mountain | TileKind::Village | TileKind::Building => continue,
                 _ => break,
             }
         }
@@ -283,7 +305,8 @@ impl Entity {
 
     pub fn id(&self) -> Option<u32> {
         Some(match &self.kind {
-            EntityKind::Boss { id, .. } => *id,
+            EntityKind::Boss { id, .. }
+            | EntityKind::Npc { id, .. } => *id,
             EntityKind::Item(item) => item.id,
             _ => None?,
         })
@@ -320,8 +343,9 @@ pub enum EntityKind {
     },
     Item(Item),
     Npc {
-        dialogue: &'static[&'static str],
+        dialogue: &'static [&'static str],
         dialogue_idx: Option<usize>,
+        items: Vec<(Item, usize)>,
         id: u32,
     },
 }
@@ -329,7 +353,7 @@ pub enum EntityKind {
 impl EntityKind {
     pub fn spawn_percentage(&self, tile: &Tile) -> f32 {
         match tile.kind {
-            TileKind::Water | TileKind::Road | TileKind::Mountain => 0.0,
+            TileKind::Water | TileKind::Mountain | TileKind::Road | TileKind::Village | TileKind::Building => 0.0,
             TileKind::Grass => match self {
                 EntityKind::Food { .. } => 0.75,
                 EntityKind::Enemy { .. } => 0.15,

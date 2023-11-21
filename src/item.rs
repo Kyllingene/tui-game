@@ -106,12 +106,9 @@ impl Buff {
         *stat = stat.saturating_add_signed(diff);
     }
 
-    pub const fn diff(&self) -> u32 {
+    pub fn diff(&self) -> u32 {
         match self {
-            Self::MaxHealth(d)
-                | Self::Damage(d)
-                | Self::ThirstCap(d)
-                | Self::HungerCap(d) => *d
+            Self::MaxHealth(d) | Self::Damage(d) | Self::ThirstCap(d) | Self::HungerCap(d) => *d,
         }
     }
 

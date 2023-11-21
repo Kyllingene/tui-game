@@ -1,5 +1,3 @@
-#![feature(try_trait_v2)]
-
 mod difficulty;
 mod entity;
 mod input;
@@ -28,7 +26,7 @@ fn main() {
         cod::flush();
 
         let res = world.update();
-        if res.bad() {
+        if let Err(res) = res {
             world.draw(0, 0);
             world.draw_message(quip::random(res), 1);
             break;

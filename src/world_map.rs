@@ -1,10 +1,10 @@
 use std::collections::HashMap;
 
+use crate::difficulty::Difficulty;
 use crate::entity::{Entity, EntityKind};
 use crate::item::{Buff, Item};
 use crate::map::{Direction, Tile, TileKind};
 use crate::sector::Sector;
-use crate::difficulty::Difficulty;
 
 macro_rules! sector {
     ( $sectors:expr, $id:expr => $neighbors:expr, $entities:expr $(,)? ) => {
@@ -27,7 +27,8 @@ macro_rules! sector {
                 $id,
                 $entities,
                 $neighbors,
-            ).with_difficulty($difficulty),
+            )
+            .with_difficulty($difficulty),
         )
     };
 }
@@ -113,7 +114,9 @@ pub fn sectors() -> HashMap<&'static str, Sector> {
         ],
     );
 
-    sector!(sectors, "mountains1" => 
+    sectors.get_mut("plains4").unwrap().entrance(17, 11, "village1");
+
+    sector!(sectors, "mountains1" =>
         [None, None, None, Some("plains2")],
         vec![
             Entity::new(3, 6,
@@ -132,15 +135,23 @@ pub fn sectors() -> HashMap<&'static str, Sector> {
                         "Well, good luck, traveler!"
                     ],
                     dialogue_idx: Some(0),
+                    items: vec![],
                     id: entity_id(),
                 },
                 true,
             ),
         ],
-        Difficulty::hard(),
+        Difficulty {
+            food_mul: 0.5,
+            food_food_mul: 1.5,
+
+            enemy_mul: 2.0,
+            enemy_health_mul: 2.0,
+            enemy_damage_mul: 2.0,
+        },
     );
 
-    sector!(sectors, "peninsula1" => 
+    sector!(sectors, "peninsula1" =>
         [Some("plains3"), None, None, None],
         vec![
             Entity::new(17, 14,
@@ -156,6 +167,28 @@ pub fn sectors() -> HashMap<&'static str, Sector> {
         ],
         Difficulty::hard()
     );
+
+    sectors.insert("village1", Sector::town(
+        include_str!("../map/village1.txt"),
+        "village1",
+        vec![
+            Entity::new(3, 2,
+                EntityKind::Npc {
+                    dialogue: &[
+                        "Welcome, traveler!\nStay as long as you like.",
+                        "We're a quiet town, so don't\nexpect many attractions.",
+                        "I've got to get back to work."
+                    ],
+                    dialogue_idx: Some(0),
+                    items: vec![(Item::basic("Pouch", entity_id(), Buff::HungerCap(2)), 2)],
+                    id: entity_id(),
+                },
+                true,
+            ),
+        ],
+        "plains4",
+        17, 11,
+    ));
 
     sectors
 }
